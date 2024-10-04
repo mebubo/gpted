@@ -76,6 +76,12 @@ for word, avg_logprob in words:
 
 words = split_into_words(tokens[1:], token_log_probs)
 
+# Define a threshold for low probability words
+log_prob_threshold = -5.0
+
+# Filter words with log probability below the threshold
+low_prob_words = [word for word in words if word.logprob < log_prob_threshold]
+
 
 #%%
 def generate_replacements(model, tokenizer, prefix, num_samples=5):
