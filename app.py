@@ -18,7 +18,7 @@ def process_input_text(input_text, tokenizer, device):
     input_ids = inputs["input_ids"]
     return inputs, input_ids
 
-def calculate_log_probabilities(model, inputs, input_ids):
+def calculate_log_probabilities(model, tokenizer, inputs, input_ids):
     with torch.no_grad():
         outputs = model(**inputs, labels=input_ids)
     logits = outputs.logits[0, :-1, :]
@@ -54,7 +54,7 @@ def main():
     input_text = "He asked me to prostrate myself before the king, but I rifused."
     inputs, input_ids = process_input_text(input_text, tokenizer, device)
 
-    result = calculate_log_probabilities(model, inputs, input_ids)
+    result = calculate_log_probabilities(model, tokenizer, inputs, input_ids)
 
     words = split_into_words([token for token, _ in result], [logprob for _, logprob in result])
     log_prob_threshold = -5.0
