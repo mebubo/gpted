@@ -1,5 +1,6 @@
 #%%
 import time
+from tqdm import tqdm
 from text_processing import split_into_words, Word
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, PreTrainedModel, PreTrainedTokenizer
@@ -64,7 +65,8 @@ low_prob_words = [word for word in words if word.logprob < log_prob_threshold]
 
 start_time = time.time()
 
-for word in low_prob_words:
+for word in tqdm(low_prob_words, desc="Processing words"):
+    iteration_start_time = time.time()
     prefix_index = word.first_token_index
     prefix_tokens = [token for token, _ in result][:prefix_index + 1]
     prefix = tokenizer.convert_tokens_to_string(prefix_tokens)
@@ -72,5 +74,8 @@ for word in low_prob_words:
     print(f"Original word: {word.text}, Log Probability: {word.logprob:.4f}")
     print(f"Proposed replacements: {replacements}")
     print()
-    end_time = time.time()
-    print(f"Time taken for the loop: {end_time - start_time:.4f} seconds")
+    iteration_end_time = time.time()
+    print(f"Time taken for this iteration: {iteration_end_time - iteration_start_time:.4f} seconds")
+
+end_time = time.time()
+print(f"Total time taken for the loop: {end_time - start_time:.4f} seconds")
