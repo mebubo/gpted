@@ -30,8 +30,8 @@ def calculate_log_probabilities(model, tokenizer, inputs, input_ids, attention_m
     return list(zip(tokens[1:], token_log_probs.tolist()))
 
 
-def generate_replacements(model: PreTrainedModel, tokenizer: PreTrainedTokenizer, prefix: str, device: torch.device, num_samples: int = 5) -> list[str]:
-    input_context = tokenizer(prefix, return_tensors="pt").to(device)
+def generate_replacements(model: PreTrainedModel, tokenizer: PreTrainedTokenizer, prefix_tokens: list[int], device: torch.device, num_samples: int = 5) -> list[str]:
+    input_context = {"input_ids": torch.tensor([prefix_tokens]).to(device)}
     input_ids = input_context["input_ids"]
     attention_mask = input_context["attention_mask"]
     with torch.no_grad():
@@ -73,8 +73,7 @@ for word in tqdm(low_prob_words, desc="Processing words"):
     iteration_start_time = time.time()
     prefix_index = word.first_token_index
     prefix_tokens = [token for token, _ in result][:prefix_index + 1]
-    prefix = tokenizer.convert_tokens_to_string(prefix_tokens)
-    replacements = generate_replacements(model, tokenizer, prefix, device)
+    replacements = generate_replacements(model, tokenizer, prefix_tokens, device)
     print(f"Original word: {word.text}, Log Probability: {word.logprob:.4f}")
     print(f"Proposed replacements: {replacements}")
     print()
