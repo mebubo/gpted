@@ -47,27 +47,26 @@ def generate_replacements(model, tokenizer, prefix, device, num_samples=5):
         new_words.append(new_word)
     return new_words
 
-def main():
-    model_name = "mistralai/Mistral-7B-v0.1"
-    model, tokenizer, device = load_model_and_tokenizer(model_name)
+#%%
+model_name = "mistralai/Mistral-7B-v0.1"
+model, tokenizer, device = load_model_and_tokenizer(model_name)
 
-    input_text = "He asked me to prostrate myself before the king, but I rifused."
-    inputs, input_ids = process_input_text(input_text, tokenizer, device)
+input_text = "He asked me to prostrate myself before the king, but I rifused."
+inputs, input_ids = process_input_text(input_text, tokenizer, device)
 
-    result = calculate_log_probabilities(model, tokenizer, inputs, input_ids)
+result = calculate_log_probabilities(model, tokenizer, inputs, input_ids)
 
-    words = split_into_words([token for token, _ in result], [logprob for _, logprob in result])
-    log_prob_threshold = -5.0
-    low_prob_words = [word for word in words if word.logprob < log_prob_threshold]
+words = split_into_words([token for token, _ in result], [logprob for _, logprob in result])
+log_prob_threshold = -5.0
+low_prob_words = [word for word in words if word.logprob < log_prob_threshold]
 
-    for word in low_prob_words:
-        prefix_index = word.first_token_index
-        prefix_tokens = [token for token, _ in result][:prefix_index + 1]
-        prefix = tokenizer.convert_tokens_to_string(prefix_tokens)
-        replacements = generate_replacements(model, tokenizer, prefix, device)
-        print(f"Original word: {word.text}, Log Probability: {word.logprob:.4f}")
-        print(f"Proposed replacements: {replacements}")
-        print()
+#%%
 
-if __name__ == "__main__":
-    main()
+for word in low_prob_words:
+    prefix_index = word.first_token_index
+    prefix_tokens = [token for token, _ in result][:prefix_index + 1]
+    prefix = tokenizer.convert_tokens_to_string(prefix_tokens)
+    replacements = generate_replacements(model, tokenizer, prefix, device)
+    print(f"Original word: {word.text}, Log Probability: {word.logprob:.4f}")
+    print(f"Proposed replacements: {replacements}")
+    print()
