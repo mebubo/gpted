@@ -1,10 +1,7 @@
-#%%
 from text_processing import split_into_words, Word
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, PreTrainedModel, PreTrainedTokenizer
 from pprint import pprint
-
-#%%
 
 def load_model_and_tokenizer(model_name):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -27,7 +24,6 @@ def calculate_log_probabilities(model, tokenizer, inputs, input_ids):
     tokens = tokenizer.convert_ids_to_tokens(input_ids[0])
     return list(zip(tokens[1:], token_log_probs.tolist()))
 
-from transformers import PreTrainedModel, PreTrainedTokenizer
 
 def generate_replacements(model: PreTrainedModel, tokenizer: PreTrainedTokenizer, prefix: str, device: torch.device, num_samples: int = 5) -> list[str]:
     input_context = tokenizer(prefix, return_tensors="pt").to(device)
