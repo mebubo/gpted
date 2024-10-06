@@ -16,11 +16,12 @@ def load_model_and_tokenizer(model_name):
 def process_input_text(input_text, tokenizer, device):
     inputs = tokenizer(input_text, return_tensors="pt").to(device)
     input_ids = inputs["input_ids"]
+    attention_mask = inputs["attention_mask"]
     return inputs, input_ids
 
 def calculate_log_probabilities(model, tokenizer, inputs, input_ids):
     with torch.no_grad():
-        outputs = model(**inputs, labels=input_ids)
+        outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=input_ids)
     logits = outputs.logits[0, :-1, :]
     log_probs = torch.log_softmax(logits, dim=-1)
     token_log_probs = log_probs[range(log_probs.shape[0]), input_ids[0][1:]]
@@ -31,9 +32,11 @@ def calculate_log_probabilities(model, tokenizer, inputs, input_ids):
 def generate_replacements(model: PreTrainedModel, tokenizer: PreTrainedTokenizer, prefix: str, device: torch.device, num_samples: int = 5) -> list[str]:
     input_context = tokenizer(prefix, return_tensors="pt").to(device)
     input_ids = input_context["input_ids"]
+    attention_mask = input_context["attention_mask"]
     with torch.no_grad():
         outputs = model.generate(
             input_ids=input_ids,
+            attention_mask=attention_mask,
             max_length=input_ids.shape[-1] + 5,
             num_return_sequences=num_samples,
             temperature=1.0,
