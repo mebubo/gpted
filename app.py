@@ -1,4 +1,5 @@
 #%%
+import time
 from text_processing import split_into_words, Word
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, PreTrainedModel, PreTrainedTokenizer
@@ -61,6 +62,8 @@ low_prob_words = [word for word in words if word.logprob < log_prob_threshold]
 
 #%%
 
+start_time = time.time()
+
 for word in low_prob_words:
     prefix_index = word.first_token_index
     prefix_tokens = [token for token, _ in result][:prefix_index + 1]
@@ -69,3 +72,5 @@ for word in low_prob_words:
     print(f"Original word: {word.text}, Log Probability: {word.logprob:.4f}")
     print(f"Proposed replacements: {replacements}")
     print()
+    end_time = time.time()
+    print(f"Time taken for the loop: {end_time - start_time:.4f} seconds")
