@@ -27,7 +27,10 @@ def calculate_log_probabilities(model, tokenizer, inputs, input_ids):
     tokens = tokenizer.convert_ids_to_tokens(input_ids[0])
     return list(zip(tokens[1:], token_log_probs.tolist()))
 
-def generate_replacements(model, tokenizer, prefix, device, num_samples=5):
+from transformers import PreTrainedModel, PreTrainedTokenizer
+from typing import List
+
+def generate_replacements(model: PreTrainedModel, tokenizer: PreTrainedTokenizer, prefix: str, device: torch.device, num_samples: int = 5) -> List[str]:
     input_context = tokenizer(prefix, return_tensors="pt").to(device)
     input_ids = input_context["input_ids"]
     with torch.no_grad():
