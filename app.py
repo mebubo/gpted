@@ -79,3 +79,5 @@ for word in tqdm(low_prob_words, desc="Processing words"):
 
 end_time = time.time()
 print(f"Total time taken for the loop: {end_time - start_time:.4f} seconds")
+
+# %%
