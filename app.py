@@ -14,12 +14,13 @@ def load_model_and_tokenizer(model_name):
     return model, tokenizer, device
 
 def process_input_text(input_text, tokenizer, device):
+    """Process input text to obtain input IDs and attention mask."""
     inputs = tokenizer(input_text, return_tensors="pt").to(device)
     input_ids = inputs["input_ids"]
     attention_mask = inputs["attention_mask"]
-    return inputs, input_ids
+    return inputs, input_ids, attention_mask
 
-def calculate_log_probabilities(model, tokenizer, inputs, input_ids):
+def calculate_log_probabilities(model, tokenizer, inputs, input_ids, attention_mask):
     with torch.no_grad():
         outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=input_ids)
     logits = outputs.logits[0, :-1, :]
@@ -56,9 +57,9 @@ model_name = "mistralai/Mistral-7B-v0.1"
 model, tokenizer, device = load_model_and_tokenizer(model_name)
 
 input_text = "He asked me to prostrate myself before the king, but I rifused."
-inputs, input_ids = process_input_text(input_text, tokenizer, device)
+inputs, input_ids, attention_mask = process_input_text(input_text, tokenizer, device)
 
-result = calculate_log_probabilities(model, tokenizer, inputs, input_ids)
+result = calculate_log_probabilities(model, tokenizer, inputs, input_ids, attention_mask)
 
 words = split_into_words([token for token, _ in result], [logprob for _, logprob in result])
 log_prob_threshold = -5.0
