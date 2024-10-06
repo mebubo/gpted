@@ -72,7 +72,7 @@ start_time = time.time()
 for word in tqdm(low_prob_words, desc="Processing words"):
     iteration_start_time = time.time()
     prefix_index = word.first_token_index
-    prefix_tokens = [token for token, _ in result][:prefix_index + 1]
+    prefix_tokens = tokenizer.convert_tokens_to_ids([token for token, _ in result][:prefix_index + 1])
     replacements = generate_replacements(model, tokenizer, prefix_tokens, device)
     print(f"Original word: {word.text}, Log Probability: {word.logprob:.4f}")
     print(f"Proposed replacements: {replacements}")
