@@ -30,19 +30,19 @@ def calculate_log_probabilities(model, tokenizer, inputs, input_ids):
 def generate_replacements(model, tokenizer, prefix, device, num_samples=5):
     input_context = tokenizer(prefix, return_tensors="pt").to(device)
     input_ids = input_context["input_ids"]
+    with torch.no_grad():
+        outputs = model.generate(
+            input_ids=input_ids,
+            max_length=input_ids.shape[-1] + 5,
+            num_return_sequences=num_samples,
+            temperature=1.0,
+            top_k=50,
+            top_p=0.95,
+            do_sample=True
+        )
     new_words = []
-    for _ in range(num_samples):
-        with torch.no_grad():
-            outputs = model.generate(
-                input_ids=input_ids,
-                max_length=input_ids.shape[-1] + 5,
-                num_return_sequences=1,
-                temperature=1.0,
-                top_k=50,
-                top_p=0.95,
-                do_sample=True
-            )
-        generated_ids = outputs[0][input_ids.shape[-1]:]
+    for i in range(num_samples):
+        generated_ids = outputs[i][input_ids.shape[-1]:]
         new_word = tokenizer.decode(generated_ids, skip_special_tokens=True).split()[0]
         new_words.append(new_word)
     return new_words
