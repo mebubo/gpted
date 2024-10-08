@@ -1,10 +1,8 @@
 #%%
 import time
-from tqdm import tqdm
 from text_processing import split_into_words, Word
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, PreTrainedModel, PreTrainedTokenizer, PreTrainedTokenizerFast, BatchEncoding
-from tokenizers import Encoding
 from typing import cast
 
 type Tokenizer = PreTrainedTokenizer | PreTrainedTokenizerFast
@@ -35,10 +33,9 @@ def calculate_log_probabilities(model: PreTrainedModel, tokenizer: Tokenizer, in
     return list(zip(tokens.tolist(), token_log_probs.tolist()))
 
 
-def generate_replacements(model: PreTrainedModel, tokenizer: PreTrainedTokenizer, prefix_tokens: list[int], device: torch.device, num_samples: int = 5) -> list[str]:
-    input_context = {"input_ids": torch.tensor([prefix_tokens]).to(device)}
-    input_ids = input_context["input_ids"]
-    attention_mask = input_context["attention_mask"]
+def generate_replacements(model: PreTrainedModel, tokenizer: Tokenizer, contexts: list[list[int]], device: torch.device, num_samples: int = 5) -> list[list[str]]:
+    input_ids = torch.tensor(contexts).to(device)
+    attention_mask = torch.ones_like(input_ids)
     with torch.no_grad():
         outputs = model.generate(
             input_ids=input_ids,
@@ -50,12 +47,15 @@ def generate_replacements(model: PreTrainedModel, tokenizer: PreTrainedTokenizer
             top_p=0.95,
             do_sample=True
         )
-    new_words = []
-    for i in range(num_samples):
-        generated_ids = outputs[i][input_ids.shape[-1]:]
-        new_word = tokenizer.decode(generated_ids, skip_special_tokens=True).split()[0]
-        new_words.append(new_word)
-    return new_words
+    all_new_words = []
+    for i in range(len(contexts)):
+        replacements = []
+        for j in range(num_samples):
+            generated_ids = outputs[i * num_samples + j][input_ids.shape[-1]:]
+            new_word = tokenizer.decode(generated_ids, skip_special_tokens=True).split()[0]
+            replacements.append(new_word)
+        all_new_words.append(replacements)
+    return all_new_words
 
 #%%
 
@@ -71,11 +71,17 @@ input_ids, attention_mask = tokenize(input_text, tokenizer, device)
 
 #%%
 
-token_probs: list[tuple[str, float]] = calculate_log_probabilities(model, tokenizer, input_ids, attention_mask)
+token_probs: list[tuple[int, float]] = calculate_log_probabilities(model, tokenizer, input_ids, attention_mask)
 
 #%%
 
-words = split_into_words(token_probs)
+import importlib
+import text_processing
+
+importlib.reload(text_processing)
+from text_processing import split_into_words, Word
+
+words = split_into_words(token_probs, tokenizer)
 log_prob_threshold = -5.0
 low_prob_words = [word for word in words if word.logprob < log_prob_threshold]
 
@@ -83,18 +89,14 @@ low_prob_words = [word for word in words if word.logprob < log_prob_threshold]
 
 start_time = time.time()
 
-for word in tqdm(low_prob_words, desc="Processing words"):
-    iteration_start_time = time.time()
-    prefix_index = word.first_token_index
-    prefix_tokens = tokenizer.convert_tokens_to_ids([token for token, _ in token_probs][:prefix_index + 1])
-    replacements = generate_replacements(model, tokenizer, prefix_tokens, device)
+contexts = [word.context for word in low_prob_words]
+replacements_batch = generate_replacements(model, tokenizer, contexts, device)
+
+for word, replacements in zip(low_prob_words, replacements_batch):
     print(f"Original word: {word.text}, Log Probability: {word.logprob:.4f}")
     print(f"Proposed replacements: {replacements}")
-    print()
-    iteration_end_time = time.time()
-    print(f"Time taken for this iteration: {iteration_end_time - iteration_start_time:.4f} seconds")
 
 end_time = time.time()
-print(f"Total time taken for the loop: {end_time - start_time:.4f} seconds")
+print(f"Total time taken for replacements: {end_time - start_time:.4f} seconds")
 
 # %%
