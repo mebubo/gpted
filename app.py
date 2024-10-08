@@ -21,7 +21,7 @@ def tokenize(input_text: str, tokenizer: Tokenizer, device: torch.device) -> tup
     attention_mask = cast(torch.Tensor, inputs["attention_mask"])
     return input_ids, attention_mask
 
-def calculate_log_probabilities(model: PreTrainedModel, tokenizer: Tokenizer, input_ids: torch.Tensor, attention_mask: torch.Tensor) -> list[tuple[str, float]]:
+def calculate_log_probabilities(model: PreTrainedModel, tokenizer: Tokenizer, input_ids: torch.Tensor, attention_mask: torch.Tensor) -> list[tuple[int, float]]:
     with torch.no_grad():
         outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=input_ids)
     # B x T x V
@@ -31,8 +31,8 @@ def calculate_log_probabilities(model: PreTrainedModel, tokenizer: Tokenizer, in
     # T - 1
     token_log_probs: torch.Tensor = log_probs[0, range(log_probs.shape[1]), input_ids[0][1:]]
     # T - 1
-    tokens: list[str] = tokenizer.convert_ids_to_tokens(input_ids[0])[1:]
-    return list(zip(tokens, token_log_probs.tolist()))
+    tokens: torch.Tensor = input_ids[0][1:]
+    return list(zip(tokens.tolist(), token_log_probs.tolist()))
 
 
 def generate_replacements(model: PreTrainedModel, tokenizer: PreTrainedTokenizer, prefix_tokens: list[int], device: torch.device, num_samples: int = 5) -> list[str]:
