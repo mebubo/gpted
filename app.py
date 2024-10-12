@@ -107,11 +107,11 @@ model, tokenizer = load_model_and_tokenizer(model_name, device)
 #%%
 
 input_text = "He asked me to prostrate myself before the king, but I rifused."
-input_ids, attention_mask = tokenize(input_text, tokenizer, device)
+inputs: BatchEncoding = tokenize(input_text, tokenizer, device)
 
 #%%
 
-token_probs: list[tuple[int, float]] = calculate_log_probabilities(model, tokenizer, input_ids, attention_mask)
+token_probs: list[tuple[int, float]] = calculate_log_probabilities(model, tokenizer, inputs)
 
 #%%
 
