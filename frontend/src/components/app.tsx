@@ -4,14 +4,22 @@ import { TokenChip } from "./TokenChip"
 interface Word {
   text: string
   logprob: number
+  replacements: string[]
 }
 
 async function checkText(text: string): Promise<Word[]> {
   await new Promise(resolve => setTimeout(resolve, 3000));
 
   const words = text.split(/\b/)
-  return words.map(word => ({ text: word, logprob: -word.length }))
+  return words.map(word => ({ text: word, logprob: -word.length, replacements: word.length < 4 ? [] : ["foo", "bar"] }))
 }
+
+// Add a new Spinner component
+const Spinner = () => (
+  <div className="spinner-overlay">
+    <div className="spinner"></div>
+  </div>
+);
 
 export default function App() {
   const [threshold, setThreshold] = useState(-5.0)
@@ -21,12 +29,18 @@ export default function App() {
   const [text, setText] = useState("")
   const [mode, setMode] = useState<"edit" | "check">("edit")
   const [words, setWords] = useState<Word[]>([])
+  const [isLoading, setIsLoading] = useState(false)
 
   const toggleMode = async () => {
     if (mode === "edit") {
-      const checkedWords = await checkText(text)
-      setWords(checkedWords)
-      setMode("check")
+      setIsLoading(true)
+      try {
+        const checkedWords = await checkText(text)
+        setWords(checkedWords)
+      } finally {
+        setMode("check")
+        setIsLoading(false)
+      }
     } else {
       setMode("edit")
     }
@@ -35,18 +49,26 @@ export default function App() {
   let result
 
   if (mode === "edit") {
-    result = <textarea value={text} onChange={e => setText(e.target.value)} />
+    result = (
+      <div className="result-container">
+        {isLoading && <Spinner />}
+        <textarea value={text} onChange={e => setText(e.target.value)} />
+      </div>
+    )
   } else {
     result = (
-      <div className="result">
-        {words.map((word, index) => (
-          <TokenChip
-            key={index}
-            token={word.text}
-            logprob={word.logprob}
-            threshold={threshold}
-          />
-        ))}
+      <div className="result-container">
+        {isLoading && <Spinner />}
+        <div className="result">
+          {words.map((word, index) => (
+            <TokenChip
+              key={index}
+              token={word.text}
+              logprob={word.logprob}
+              threshold={threshold}
+            />
+          ))}
+        </div>
       </div>
     )
   }
