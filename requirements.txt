@@ -1,8 +1,6 @@
 openai
 ipykernel
 ipywidgets
-# pyzmq==25.1.2
-notebook
 transformers
 torch
 huggingface_hub
