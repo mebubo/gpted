@@ -51,15 +51,12 @@ def load_model_and_tokenizer(model_name: str, device: torch.device) -> tuple[Pre
     model.to(device)
     return model, tokenizer
 
-def tokenize(input_text: str, tokenizer: Tokenizer, device: torch.device) -> tuple[torch.Tensor, torch.Tensor]:
-    inputs: BatchEncoding = tokenizer(input_text, return_tensors="pt").to(device)
-    input_ids = cast(torch.Tensor, inputs["input_ids"])
-    attention_mask = cast(torch.Tensor, inputs["attention_mask"])
-    return input_ids, attention_mask
+def tokenize(input_text: str, tokenizer: Tokenizer, device: torch.device) -> BatchEncoding:
+    return tokenizer(input_text, return_tensors="pt").to(device)
 
-def calculate_log_probabilities(model: PreTrainedModel, tokenizer: Tokenizer, input_ids: torch.Tensor, attention_mask: torch.Tensor) -> list[tuple[int, float]]:
+def calculate_log_probabilities(model: PreTrainedModel, tokenizer: Tokenizer, inputs: BatchEncoding) -> list[tuple[int, float]]:
     with torch.no_grad():
-        outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=input_ids)
+        outputs = model(input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"], labels=inputs["input_ids"])
     # B x T x V
     logits: torch.Tensor = outputs.logits[:, :-1, :]
     # B x T x V
@@ -70,16 +67,14 @@ def calculate_log_probabilities(model: PreTrainedModel, tokenizer: Tokenizer, in
     tokens: torch.Tensor = input_ids[0][1:]
     return list(zip(tokens.tolist(), token_log_probs.tolist()))
 
-def prepare_inputs(contexts: list[list[int]], tokenizer: Tokenizer, device: torch.device) -> tuple[torch.FloatTensor, torch.FloatTensor]:
+def prepare_inputs(contexts: list[list[int]], tokenizer: Tokenizer, device: torch.device) -> BatchEncoding:
     texts = [tokenizer.decode(context, skip_special_tokens=True) for context in contexts]
-    inputs = tokenizer(texts, return_tensors="pt", padding=True).to(device)
-    input_ids = cast(torch.FloatTensor, inputs["input_ids"])
-    attention_mask = cast(torch.FloatTensor, inputs["attention_mask"])
-    return input_ids, attention_mask
+    return tokenizer(texts, return_tensors="pt", padding=True).to(device)
 
-def generate_replacements(model: PreTrainedModel, tokenizer: Tokenizer, contexts: list[list[int]],
+def generate_replacements(model: PreTrainedModel, tokenizer: Tokenizer, inputs: BatchEncoding,
                           device: torch.device, num_samples: int = 5) -> tuple[GenerateOutput | torch.LongTensor, list[list[str]]]:
-    input_ids, attention_mask = prepare_inputs(contexts, tokenizer, device)
+    input_ids = inputs["input_ids"]
+    attention_mask = inputs["attention_mask"]
     with torch.no_grad():
         outputs = model.generate(
             input_ids=input_ids,
@@ -92,12 +87,13 @@ def generate_replacements(model: PreTrainedModel, tokenizer: Tokenizer, contexts
             do_sample=True
         )
     all_new_words = []
-    for i in range(len(contexts)):
+    for i in range(len(input_ids)):
         replacements = []
         for j in range(num_samples):
             generated_ids = outputs[i * num_samples + j][input_ids.shape[-1]:]
-            new_word = tokenizer.decode(generated_ids, skip_special_tokens=False).split()[0]
-            replacements.append(new_word)
+            new_word = tokenizer.convert_ids_to_tokens(generated_ids.tolist())[0]
+            if new_word.startswith(chr(9601)):
+                replacements.append(new_word)
         all_new_words.append(replacements)
     return outputs, all_new_words
 
@@ -125,11 +121,13 @@ low_prob_words = [word for word in words if word.logprob < log_prob_threshold]
 
 #%%
 contexts = [word.context for word in low_prob_words]
+inputs = prepare_inputs(contexts, tokenizer, device)
+input_ids = inputs["input_ids"]
 
 #%%
 
 start_time = time.time()
-replacements_batch = generate_replacements(model, tokenizer, contexts, device, num_samples=5)
+outputs, replacements_batch = generate_replacements(model, tokenizer, inputs, device, num_samples=5)
 end_time = time.time()
 print(f"Total time taken for replacements: {end_time - start_time:.4f} seconds")
 
@@ -138,5 +136,11 @@ print(f"Total time taken for replacements: {end_time - start_time:.4f} seconds")
 for word, replacements in zip(low_prob_words, replacements_batch):
     print(f"Original word: {word.text}, Log Probability: {word.logprob:.4f}")
     print(f"Proposed replacements: {replacements}")
+
+# %%
+
+generated_ids = outputs[:, input_ids.shape[-1]:]
+for g in generated_ids:
+    print(tokenizer.convert_ids_to_tokens(g.tolist()))
 
 # %%
