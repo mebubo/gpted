@@ -55,8 +55,10 @@ def tokenize(input_text: str, tokenizer: Tokenizer, device: torch.device) -> Bat
     return tokenizer(input_text, return_tensors="pt").to(device)
 
 def calculate_log_probabilities(model: PreTrainedModel, tokenizer: Tokenizer, inputs: BatchEncoding) -> list[tuple[int, float]]:
+    input_ids = inputs["input_ids"]
+    attention_mask = inputs["attention_mask"]
     with torch.no_grad():
-        outputs = model(input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"], labels=inputs["input_ids"])
+        outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=input_ids)
     # B x T x V
     logits: torch.Tensor = outputs.logits[:, :-1, :]
     # B x T x V
@@ -71,8 +73,7 @@ def prepare_inputs(contexts: list[list[int]], tokenizer: Tokenizer, device: torc
     texts = [tokenizer.decode(context, skip_special_tokens=True) for context in contexts]
     return tokenizer(texts, return_tensors="pt", padding=True).to(device)
 
-def generate_replacements(model: PreTrainedModel, tokenizer: Tokenizer, inputs: BatchEncoding,
-                          device: torch.device, num_samples: int = 5) -> tuple[GenerateOutput | torch.LongTensor, list[list[str]]]:
+def generate_outputs(model: PreTrainedModel, inputs: BatchEncoding, num_samples: int = 5) -> GenerateOutput | torch.LongTensor:
     input_ids = inputs["input_ids"]
     attention_mask = inputs["attention_mask"]
     with torch.no_grad():
@@ -86,16 +87,19 @@ def generate_replacements(model: PreTrainedModel, tokenizer: Tokenizer, inputs: 
             top_p=0.95,
             do_sample=True
         )
+    return outputs
+
+def extract_replacements(outputs: GenerateOutput | torch.LongTensor, tokenizer: Tokenizer, num_inputs: int, input_len: int, num_samples: int = 5) -> list[list[str]]:
     all_new_words = []
-    for i in range(len(input_ids)):
+    for i in range(num_inputs):
         replacements = []
         for j in range(num_samples):
-            generated_ids = outputs[i * num_samples + j][input_ids.shape[-1]:]
+            generated_ids = outputs[i * num_samples + j][input_len:]
             new_word = tokenizer.convert_ids_to_tokens(generated_ids.tolist())[0]
             if new_word.startswith(chr(9601)):
                 replacements.append(new_word)
         all_new_words.append(replacements)
-    return outputs, all_new_words
+    return all_new_words
 
 #%%
 
@@ -126,10 +130,14 @@ input_ids = inputs["input_ids"]
 
 #%%
 
+num_samples = 5
 start_time = time.time()
-outputs, replacements_batch = generate_replacements(model, tokenizer, inputs, device, num_samples=5)
+outputs = generate_outputs(model, inputs, num_samples)
 end_time = time.time()
 print(f"Total time taken for replacements: {end_time - start_time:.4f} seconds")
+
+#%%
+replacements_batch = extract_replacements(outputs, tokenizer, input_ids.shape[0], input_ids.shape[1], num_samples)
 
 #%%
 
