@@ -15,6 +15,9 @@ class Word:
     logprob: float
     context: list[int]
 
+def starts_with_space(token: str) -> bool:
+    return token.startswith(chr(9601)) or token.startswith(chr(288))
+
 def split_into_words(token_probs: list[tuple[int, float]], tokenizer: Tokenizer) -> list[Word]:
     words: list[Word] = []
     current_word: list[int] = []
@@ -31,7 +34,7 @@ def split_into_words(token_probs: list[tuple[int, float]], tokenizer: Tokenizer)
 
     for i, (token_id, logprob) in enumerate(token_probs):
         token: str = tokenizer.convert_ids_to_tokens([token_id])[0]
-        if not token.startswith(chr(9601)) and token.isalpha():
+        if not starts_with_space(token) and token.isalpha():
             current_word.append(token_id)
             current_log_probs.append(logprob)
         else:
@@ -80,12 +83,13 @@ def generate_outputs(model: PreTrainedModel, inputs: BatchEncoding, num_samples:
         outputs = model.generate(
             input_ids=input_ids,
             attention_mask=attention_mask,
-            max_length=input_ids.shape[-1] + 5,
+            max_new_tokens=4,
             num_return_sequences=num_samples,
             temperature=1.0,
             top_k=50,
             top_p=0.95,
             do_sample=True
+            # num_beams=num_samples
         )
     return outputs
 
@@ -96,8 +100,8 @@ def extract_replacements(outputs: GenerateOutput | torch.LongTensor, tokenizer: 
         for j in range(num_samples):
             generated_ids = outputs[i * num_samples + j][input_len:]
             new_word = tokenizer.convert_ids_to_tokens(generated_ids.tolist())[0]
-            if new_word.startswith(chr(9601)):
-                replacements.append(new_word)
+            if starts_with_space(new_word):
+                replacements.append(new_word[1:])
         all_new_words.append(replacements)
     return all_new_words
 
@@ -105,20 +109,18 @@ def extract_replacements(outputs: GenerateOutput | torch.LongTensor, tokenizer: 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-model_name = "mistralai/Mistral-7B-v0.1"
+# model_name = "mistralai/Mistral-7B-v0.1"
+model_name = "unsloth/Llama-3.2-1B"
 model, tokenizer = load_model_and_tokenizer(model_name, device)
 
 #%%
-
 input_text = "He asked me to prostrate myself before the king, but I rifused."
 inputs: BatchEncoding = tokenize(input_text, tokenizer, device)
 
 #%%
-
 token_probs: list[tuple[int, float]] = calculate_log_probabilities(model, tokenizer, inputs)
 
 #%%
-
 words = split_into_words(token_probs, tokenizer)
 log_prob_threshold = -5.0
 low_prob_words = [word for word in words if word.logprob < log_prob_threshold]
@@ -129,7 +131,6 @@ inputs = prepare_inputs(contexts, tokenizer, device)
 input_ids = inputs["input_ids"]
 
 #%%
-
 num_samples = 5
 start_time = time.time()
 outputs = generate_outputs(model, inputs, num_samples)
@@ -140,13 +141,11 @@ print(f"Total time taken for replacements: {end_time - start_time:.4f} seconds")
 replacements_batch = extract_replacements(outputs, tokenizer, input_ids.shape[0], input_ids.shape[1], num_samples)
 
 #%%
-
 for word, replacements in zip(low_prob_words, replacements_batch):
     print(f"Original word: {word.text}, Log Probability: {word.logprob:.4f}")
     print(f"Proposed replacements: {replacements}")
 
 # %%
-
 generated_ids = outputs[:, input_ids.shape[-1]:]
 for g in generated_ids:
     print(tokenizer.convert_ids_to_tokens(g.tolist()))
