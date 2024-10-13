@@ -120,10 +120,10 @@ def check_text(input_text: str, model: PreTrainedModel, tokenizer: Tokenizer, de
     #%%
     words = split_into_words(token_probs, tokenizer)
     log_prob_threshold = -5.0
-    low_prob_words = [word for word in words if word.logprob < log_prob_threshold]
+    low_prob_words = [(i, word) for i, word in enumerate(words) if word.logprob < log_prob_threshold]
 
     #%%
-    contexts = [word.context for word in low_prob_words]
+    contexts = [word.context for _, word in low_prob_words]
     inputs = prepare_inputs(contexts, tokenizer, device)
     input_ids = inputs["input_ids"]
 
@@ -137,7 +137,12 @@ def check_text(input_text: str, model: PreTrainedModel, tokenizer: Tokenizer, de
     #%%
     replacements = extract_replacements(outputs, tokenizer, input_ids.shape[0], input_ids.shape[1], num_samples)
 
-    #%%
-    for word, replacements in zip(low_prob_words, replacements):
-        print(f"Original word: {word.text}, Log Probability: {word.logprob:.4f}")
-        print(f"Proposed replacements: {replacements}")
+    low_prob_words_with_replacements = { i: (w, r) for (i, w), r in zip(low_prob_words, replacements) }
+
+    result = []
+    for i, word in enumerate(words):
+        if i in low_prob_words_with_replacements:
+            result.append(ApiWord(text=word.text, logprob=word.logprob, replacements=low_prob_words_with_replacements[i][1]))
+        else:
+            result.append(ApiWord(text=word.text, logprob=word.logprob, replacements=[]))
+    return result

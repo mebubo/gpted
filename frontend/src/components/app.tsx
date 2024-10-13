@@ -8,6 +8,13 @@ interface Word {
 }
 
 async function checkText(text: string): Promise<Word[]> {
+  const response = await fetch(`/check?text=${text}`)
+  const data = await response.json()
+  console.log(data)
+  return data.words
+}
+
+async function checkText0(text: string): Promise<Word[]> {
   await new Promise(resolve => setTimeout(resolve, 1000));
 
   const words = text.split(/\b/)
