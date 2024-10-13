@@ -4,3 +4,4 @@ ipywidgets
 transformers
 torch
 huggingface_hub
+fastapi[standard]

@@ -8,10 +8,14 @@ interface Word {
 }
 
 async function checkText(text: string): Promise<Word[]> {
-  await new Promise(resolve => setTimeout(resolve, 3000));
+  await new Promise(resolve => setTimeout(resolve, 1000));
 
   const words = text.split(/\b/)
-  return words.map(word => ({ text: word, logprob: -word.length, replacements: word.length < 4 ? [] : ["foo", "bar"] }))
+  return words.map(word => ({
+    text: word,
+    logprob: -word.length,
+    replacements: word.length < 4 ? [] : ["foo", "bar"]
+  }))
 }
 
 // Add a new Spinner component
@@ -26,7 +30,7 @@ export default function App() {
   const [context, setContext] = useState("")
   const [wordlist, setWordlist] = useState("")
   const [showWholePrompt, setShowWholePrompt] = useState(false)
-  const [text, setText] = useState("")
+  const [text, setText] = useState("The cumbersomely quick brown fox jumps over the conspicuously lazy dog.")
   const [mode, setMode] = useState<"edit" | "check">("edit")
   const [words, setWords] = useState<Word[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -44,6 +48,14 @@ export default function App() {
     } else {
       setMode("edit")
     }
+  }
+
+  const handleReplace = (index: number, newToken: string) => {
+    const updatedWords = [...words]
+    updatedWords[index].text = newToken
+    setWords(updatedWords)
+    setText(updatedWords.map(w => w.text).join(""))
+    setMode("edit")
   }
 
   let result
@@ -66,6 +78,8 @@ export default function App() {
               token={word.text}
               logprob={word.logprob}
               threshold={threshold}
+              replacements={word.replacements}
+              onReplace={(newToken) => handleReplace(index, newToken)}
             />
           ))}
         </div>
