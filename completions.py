@@ -6,14 +6,9 @@ from transformers.generation.utils import GenerateOutput
 from typing import cast
 from dataclasses import dataclass
 
-type Tokenizer = PreTrainedTokenizer | PreTrainedTokenizerFast
+from models import ApiWord, Word
 
-@dataclass
-class Word:
-    tokens: list[int]
-    text: str
-    logprob: float
-    context: list[int]
+type Tokenizer = PreTrainedTokenizer | PreTrainedTokenizerFast
 
 def starts_with_space(token: str) -> bool:
     return token.startswith(chr(9601)) or token.startswith(chr(288))
@@ -107,47 +102,42 @@ def extract_replacements(outputs: GenerateOutput | torch.LongTensor, tokenizer: 
 
 #%%
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def load_model() -> tuple[PreTrainedModel, Tokenizer, torch.device]:
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# model_name = "mistralai/Mistral-7B-v0.1"
-model_name = "unsloth/Llama-3.2-1B"
-model, tokenizer = load_model_and_tokenizer(model_name, device)
+    # model_name = "mistralai/Mistral-7B-v0.1"
+    model_name = "unsloth/Llama-3.2-1B"
+    model, tokenizer = load_model_and_tokenizer(model_name, device)
+    return model, tokenizer, device
 
+def check_text(input_text: str, model: PreTrainedModel, tokenizer: Tokenizer, device: torch.device) -> list[ApiWord]:
 #%%
-input_text = "He asked me to prostrate myself before the king, but I rifused."
-inputs: BatchEncoding = tokenize(input_text, tokenizer, device)
+    inputs: BatchEncoding = tokenize(input_text, tokenizer, device)
 
-#%%
-token_probs: list[tuple[int, float]] = calculate_log_probabilities(model, tokenizer, inputs)
+    #%%
+    token_probs: list[tuple[int, float]] = calculate_log_probabilities(model, tokenizer, inputs)
 
-#%%
-words = split_into_words(token_probs, tokenizer)
-log_prob_threshold = -5.0
-low_prob_words = [word for word in words if word.logprob < log_prob_threshold]
+    #%%
+    words = split_into_words(token_probs, tokenizer)
+    log_prob_threshold = -5.0
+    low_prob_words = [word for word in words if word.logprob < log_prob_threshold]
 
-#%%
-contexts = [word.context for word in low_prob_words]
-inputs = prepare_inputs(contexts, tokenizer, device)
-input_ids = inputs["input_ids"]
+    #%%
+    contexts = [word.context for word in low_prob_words]
+    inputs = prepare_inputs(contexts, tokenizer, device)
+    input_ids = inputs["input_ids"]
 
-#%%
-num_samples = 5
-start_time = time.time()
-outputs = generate_outputs(model, inputs, num_samples)
-end_time = time.time()
-print(f"Total time taken for replacements: {end_time - start_time:.4f} seconds")
+    #%%
+    num_samples = 5
+    start_time = time.time()
+    outputs = generate_outputs(model, inputs, num_samples)
+    end_time = time.time()
+    print(f"Total time taken for replacements: {end_time - start_time:.4f} seconds")
 
-#%%
-replacements_batch = extract_replacements(outputs, tokenizer, input_ids.shape[0], input_ids.shape[1], num_samples)
+    #%%
+    replacements = extract_replacements(outputs, tokenizer, input_ids.shape[0], input_ids.shape[1], num_samples)
 
-#%%
-for word, replacements in zip(low_prob_words, replacements_batch):
-    print(f"Original word: {word.text}, Log Probability: {word.logprob:.4f}")
-    print(f"Proposed replacements: {replacements}")
-
-# %%
-generated_ids = outputs[:, input_ids.shape[-1]:]
-for g in generated_ids:
-    print(tokenizer.convert_ids_to_tokens(g.tolist()))
-
-# %%
+    #%%
+    for word, replacements in zip(low_prob_words, replacements):
+        print(f"Original word: {word.text}, Log Probability: {word.logprob:.4f}")
+        print(f"Proposed replacements: {replacements}")
