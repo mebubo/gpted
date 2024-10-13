@@ -91,13 +91,13 @@ def generate_outputs(model: PreTrainedModel, inputs: BatchEncoding, num_samples:
 def extract_replacements(outputs: GenerateOutput | torch.LongTensor, tokenizer: Tokenizer, num_inputs: int, input_len: int, num_samples: int = 5) -> list[list[str]]:
     all_new_words = []
     for i in range(num_inputs):
-        replacements = []
+        replacements = set()
         for j in range(num_samples):
             generated_ids = outputs[i * num_samples + j][input_len:]
             new_word = tokenizer.convert_ids_to_tokens(generated_ids.tolist())[0]
             if starts_with_space(new_word):
-                replacements.append(new_word[1:])
-        all_new_words.append(replacements)
+                replacements.add(" " +new_word[1:])
+        all_new_words.append(sorted(list(replacements)))
     return all_new_words
 
 #%%
@@ -128,7 +128,7 @@ def check_text(input_text: str, model: PreTrainedModel, tokenizer: Tokenizer, de
     input_ids = inputs["input_ids"]
 
     #%%
-    num_samples = 5
+    num_samples = 10
     start_time = time.time()
     outputs = generate_outputs(model, inputs, num_samples)
     end_time = time.time()

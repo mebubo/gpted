@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useEffect, useRef } from "react"
 
 export const TokenChip = ({
   token,
@@ -14,6 +14,20 @@ export const TokenChip = ({
   onReplace: (newToken: string) => void
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const dropdownRef = useRef<HTMLSelectElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsExpanded(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const handleClick = () => {
     if (logprob < threshold && replacements.length > 0) {
@@ -39,6 +53,7 @@ export const TokenChip = ({
       {token}
       {isExpanded && (
         <select
+          ref={dropdownRef}
           onChange={handleReplacement}
           value={token}
           style={{

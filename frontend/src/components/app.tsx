@@ -37,32 +37,40 @@ export default function App() {
   const [context, setContext] = useState("")
   const [wordlist, setWordlist] = useState("")
   const [showWholePrompt, setShowWholePrompt] = useState(false)
-  const [text, setText] = useState("The cumbersomely quick brown fox jumps over the conspicuously lazy dog.")
+  const [text, setText] = useState("I just drove to the store to but eggs, but they had some.")
   const [mode, setMode] = useState<"edit" | "check">("edit")
   const [words, setWords] = useState<Word[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
+  const check = async () => {
+    setIsLoading(true)
+    try {
+      const checkedWords = await checkText(text)
+      setWords(checkedWords)
+    } finally {
+      setIsLoading(false)
+      setMode("check")
+    }
+  }
+
   const toggleMode = async () => {
     if (mode === "edit") {
       setIsLoading(true)
-      try {
-        const checkedWords = await checkText(text)
-        setWords(checkedWords)
-      } finally {
-        setMode("check")
-        setIsLoading(false)
-      }
+      await check()
     } else {
       setMode("edit")
     }
   }
 
-  const handleReplace = (index: number, newToken: string) => {
+  const handleReplace = async (index: number, newToken: string) => {
     const updatedWords = [...words]
     updatedWords[index].text = newToken
+    updatedWords[index].logprob = 0
+    updatedWords[index].replacements = []
     setWords(updatedWords)
     setText(updatedWords.map(w => w.text).join(""))
-    setMode("edit")
+    // setMode("edit")
+    await check()
   }
 
   let result
@@ -101,7 +109,7 @@ export default function App() {
       <details>
         <summary>Advanced settings</summary>
         <label>
-          <strong>Threshold:</strong> <input type="number" step="0.1" value={threshold} onChange={e => setThreshold(Number(e.target.value))} />
+          <strong>Threshold:</strong> <input type="number" step="1" value={threshold} onChange={e => setThreshold(Number(e.target.value))} />
           <small>
             The <a href="https://en.wikipedia.org/wiki/Log_probability" target="_blank" rel="noreferrer">logprob</a> threshold.
             Tokens with logprobs smaller than this will be marked red.
@@ -132,8 +140,8 @@ export default function App() {
 
         <p>
           <small>
-            Made by <a href="https://vgel.me">Theia Vogel</a> (<a href="https://twitter.com/voooooogel">@voooooogel</a>).
-            Made with Svelte, GPT-3, and transitively, most of the web.
+            Based on <a href="https://github.com/vgel/gpted">GPTed</a> by <a href="https://vgel.me">Theia Vogel</a>.
+            Made with React, Transformers, LLama 3.2, and transitively, most of the web.
             <br />
             This software is provided with absolutely no warranty.
           </small>
