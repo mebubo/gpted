@@ -1,5 +1,6 @@
 import React, { useState } from "react"
-import { TokenChip } from "./TokenChip"
+import { WordChip } from "./WordChip"
+import Spinner from "./Spinner"
 
 interface Word {
   text: string
@@ -13,24 +14,6 @@ async function checkText(text: string): Promise<Word[]> {
   console.log(data)
   return data.words
 }
-
-async function checkText0(text: string): Promise<Word[]> {
-  await new Promise(resolve => setTimeout(resolve, 1000));
-
-  const words = text.split(/\b/)
-  return words.map(word => ({
-    text: word,
-    logprob: -word.length,
-    replacements: word.length < 4 ? [] : ["foo", "bar"]
-  }))
-}
-
-// Add a new Spinner component
-const Spinner = () => (
-  <div className="spinner-overlay">
-    <div className="spinner"></div>
-  </div>
-);
 
 export default function App() {
   const [threshold, setThreshold] = useState(-5.0)
@@ -62,14 +45,13 @@ export default function App() {
     }
   }
 
-  const handleReplace = async (index: number, newToken: string) => {
+  const handleReplace = async (index: number, newWord: string) => {
     const updatedWords = [...words]
-    updatedWords[index].text = newToken
+    updatedWords[index].text = newWord
     updatedWords[index].logprob = 0
     updatedWords[index].replacements = []
     setWords(updatedWords)
     setText(updatedWords.map(w => w.text).join(""))
-    // setMode("edit")
     await check()
   }
 
@@ -88,13 +70,13 @@ export default function App() {
         {isLoading && <Spinner />}
         <div className="result">
           {words.map((word, index) => (
-            <TokenChip
+            <WordChip
               key={index}
-              token={word.text}
+              word={word.text}
               logprob={word.logprob}
               threshold={threshold}
               replacements={word.replacements}
-              onReplace={(newToken) => handleReplace(index, newToken)}
+              onReplace={(newWord) => handleReplace(index, newWord)}
             />
           ))}
         </div>

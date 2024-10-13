@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useRef } from "react"
 
-export const TokenChip = ({
-  token,
+export const WordChip = ({
+  word,
   logprob,
   threshold,
   replacements,
   onReplace
 }: {
-  token: string,
+  word: string,
   logprob: number,
   threshold: number,
   replacements: string[],
-  onReplace: (newToken: string) => void
+  onReplace: (newWord: string) => void
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const dropdownRef = useRef<HTMLSelectElement>(null);
@@ -36,26 +36,24 @@ export const TokenChip = ({
   }
 
   const handleReplacement = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const newToken = event.target.value
-    if (newToken !== token) {
-      onReplace(newToken)
-    }
+    const newWord = event.target.value
+    onReplace(newWord)
     setIsExpanded(false);
   }
 
   return (
     <span
       title={logprob.toFixed(2)}
-      className={`token-chip ${logprob < threshold ? "flagged" : ""}`}
+      className={`word-chip ${logprob < threshold ? "flagged" : ""}`}
       style={{ position: "relative", cursor: logprob < threshold ? "pointer" : "default" }}
       onClick={handleClick}
     >
-      {token}
+      {word}
       {isExpanded && (
         <select
           ref={dropdownRef}
           onChange={handleReplacement}
-          value={token}
+          value={word}
           style={{
             position: "absolute",
             top: "100%",
@@ -65,8 +63,8 @@ export const TokenChip = ({
           size={replacements.length}
           autoFocus
         >
-          {replacements.map((rep, idx) => (
-            <option key={idx} value={rep}>{rep}</option>
+          {replacements.map((r, i) => (
+            <option key={i} value={r}>{r}</option>
           ))}
         </select>
       )}
