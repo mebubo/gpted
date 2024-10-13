@@ -25,7 +25,7 @@ export default function App() {
   const [words, setWords] = useState<Word[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
-  const check = async () => {
+  const check = async (text: string) => {
     setIsLoading(true)
     try {
       const checkedWords = await checkText(text)
@@ -39,20 +39,24 @@ export default function App() {
   const toggleMode = async () => {
     if (mode === "edit") {
       setIsLoading(true)
-      await check()
+      await check(text)
     } else {
       setMode("edit")
     }
   }
 
   const handleReplace = async (index: number, newWord: string) => {
-    const updatedWords = [...words]
-    updatedWords[index].text = newWord
-    updatedWords[index].logprob = 0
-    updatedWords[index].replacements = []
+    console.log("handleReplace", index, newWord)
+    const updatedWords = words.map((w, i) => {
+      if (i === index) {
+        return { text: newWord, logprob: 0, replacements: [] }
+      }
+      return w
+    })
     setWords(updatedWords)
-    setText(updatedWords.map(w => w.text).join(""))
-    await check()
+    const newText = updatedWords.map(w => w.text).join("")
+    setText(newText)
+    await check(newText)
   }
 
   let result

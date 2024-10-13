@@ -36,6 +36,7 @@ export const WordChip = ({
   }
 
   const handleReplacement = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    console.log("handleReplacement", event.target.value)
     const newWord = event.target.value
     onReplace(newWord)
     setIsExpanded(false);
@@ -58,11 +59,12 @@ export const WordChip = ({
             position: "absolute",
             top: "100%",
             left: 0,
-            zIndex: 1000
+            zIndex: 1000,
+            overflowY: "auto"
           }}
-          size={replacements.length}
-          autoFocus
+          size={replacements.length + 1}
         >
+          <option key="original" hidden>{word}</option>
           {replacements.map((r, i) => (
             <option key={i} value={r}>{r}</option>
           ))}
