@@ -7,25 +7,27 @@ from completions import check_text, load_model
 
 app = FastAPI()
 
-# model, tokenizer, device = load_model()
+model, tokenizer, device = load_model()
 
-def rep(i):
-    if i == 3:
-        return -10, [" jumped", " leaps"]
-    if i == 5:
-        return -10, [" calm"]
-    if i == 7:
-        return -10, [" dog", " cat", " bird", " fish"]
-    return -3, []
+def check_text_stub(text: str):
+    def rep(i):
+        if i == 3:
+            return -10, [" jumped", " leaps"]
+        if i == 5:
+            return -10, [" calm"]
+        if i == 7:
+            return -10, [" dog", " cat", " bird", " fish"]
+        return -3, []
 
-@lru_cache(maxsize=100)
-def cached_check_text(text: str):
-    # return check_text(text, model, tokenizer, device)
     result = []
     for i, w in enumerate(text.split()):
         logprob, replacements = rep(i)
         result.append(ApiWord(text=f" {w}", logprob=logprob, replacements=replacements))
     return result
+
+@lru_cache(maxsize=100)
+def cached_check_text(text: str):
+    return check_text(text, model, tokenizer, device)
 
 @app.get("/check", response_model=CheckResponse)
 def check(text: str):

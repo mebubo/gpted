@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 import { WordChip } from "./WordChip"
-import Spinner from "./Spinner"
+import { Spinner } from "./Spinner"
 
 interface Word {
   text: string
@@ -9,10 +9,11 @@ interface Word {
 }
 
 async function checkText(text: string): Promise<Word[]> {
-  const response = await fetch(`/check?text=${text}`)
-  const data = await response.json()
-  console.log(data)
-  return data.words
+  const encodedText = encodeURIComponent(text);
+  const response = await fetch(`/check?text=${encodedText}`);
+  const data = await response.json();
+  console.log(data);
+  return data.words;
 }
 
 export default function App() {

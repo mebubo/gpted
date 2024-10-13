@@ -3,8 +3,6 @@ import time
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, PreTrainedModel, PreTrainedTokenizer, PreTrainedTokenizerFast, BatchEncoding
 from transformers.generation.utils import GenerateOutput
-from typing import cast
-from dataclasses import dataclass
 
 from models import ApiWord, Word
 
