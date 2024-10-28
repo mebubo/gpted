@@ -34,3 +34,5 @@ def check(text: str):
     return CheckResponse(text=text, words=cached_check_text(text))
 
 app.mount("/", StaticFiles(directory="frontend/public", html=True))
+
+#%%

@@ -22,6 +22,7 @@ export default function App() {
   const [wordlist, setWordlist] = useState("")
   const [showWholePrompt, setShowWholePrompt] = useState(false)
   const [text, setText] = useState("I just drove to the store to but eggs, but they had some.")
+  // const [text, setText] = useState("1\n2\n3\n4\n5\n")
   const [mode, setMode] = useState<"edit" | "check">("edit")
   const [words, setWords] = useState<Word[]>([])
   const [isLoading, setIsLoading] = useState(false)

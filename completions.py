@@ -11,6 +11,9 @@ type Tokenizer = PreTrainedTokenizer | PreTrainedTokenizerFast
 def starts_with_space(token: str) -> bool:
     return token.startswith(chr(9601)) or token.startswith(chr(288))
 
+def is_newline(token: str) -> bool:
+    return len(token) == 1 and ord(token[0]) == 266
+
 def split_into_words(token_probs: list[tuple[int, float]], tokenizer: Tokenizer) -> list[Word]:
     words: list[Word] = []
     current_word: list[int] = []
@@ -18,25 +21,32 @@ def split_into_words(token_probs: list[tuple[int, float]], tokenizer: Tokenizer)
     current_word_first_token_index: int = 0
     all_tokens: list[int] = [token_id for token_id, _ in token_probs]
 
-    def append_current_word():
-        if current_word:
-            words.append(Word(current_word,
-                              tokenizer.decode(current_word),
+    def append_word(word):
+        if word:
+            words.append(Word(word,
+                              tokenizer.decode(word),
                               sum(current_log_probs),
                               all_tokens[:current_word_first_token_index]))
 
     for i, (token_id, logprob) in enumerate(token_probs):
         token: str = tokenizer.convert_ids_to_tokens([token_id])[0]
-        if not starts_with_space(token) and token.isalpha():
+        token_str = tokenizer.decode([token_id])
+        print(f"-- {token_id=} {token=} {token_str=} {token_str.isalpha()=} {token_str.isspace()=}")
+        if (not starts_with_space(token) and token_str.isalpha()):
             current_word.append(token_id)
             current_log_probs.append(logprob)
         else:
-            append_current_word()
+            append_word(current_word)
             current_word = [token_id]
             current_log_probs = [logprob]
             current_word_first_token_index = i
+            if is_newline(token):
+                append_word(current_word)
+                current_word = []
+                current_log_probs = []
+                current_word_first_token_index = i
 
-    append_current_word()
+    append_word(current_word)
 
     return words
 

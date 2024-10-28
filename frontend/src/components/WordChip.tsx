@@ -44,6 +44,22 @@ export function WordChip({
     setIsExpanded(false);  // Close the dropdown
   };
 
+  console.log(`word: ->${word}<-`);
+
+  let w1;
+  let w2;
+  let w3;
+  // if word contains a newline, render a <br />
+  if (word.includes("\n")) {
+    [w1, w3] = word.split("\n");
+    w2 = "\n";
+    console.log(`split: ${w1} | ${w2} | ${w3}`);
+  } else {
+    w1 = word;
+    w2 = "";
+    w3 = "";
+  }
+
   return (
     <span
       title={logprob.toFixed(2)}
@@ -51,7 +67,9 @@ export function WordChip({
       style={{ position: "relative", cursor: logprob < threshold ? "pointer" : "default" }}
       onClick={handleClick}
     >
-      {word}
+      {w1}
+      {w2 && <br />}
+      {w3}
       {isExpanded && (
         <div
           ref={dropdownRef}
