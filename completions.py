@@ -1,4 +1,5 @@
 #%%
+from dataclasses import dataclass
 import time
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, PreTrainedModel, PreTrainedTokenizer, PreTrainedTokenizerFast, BatchEncoding
@@ -8,6 +9,8 @@ from models import ApiWord, Word
 
 type Tokenizer = PreTrainedTokenizer | PreTrainedTokenizerFast
 
+from combine import combine
+
 def starts_with_space(token: str) -> bool:
     return token.startswith(chr(9601)) or token.startswith(chr(288))
 
@@ -15,38 +18,33 @@ def is_newline(token: str) -> bool:
     return len(token) == 1 and ord(token[0]) == 266
 
 def split_into_words(token_probs: list[tuple[int, float]], tokenizer: Tokenizer) -> list[Word]:
-    words: list[Word] = []
-    current_word: list[int] = []
-    current_log_probs: list[float] = []
-    current_word_first_token_index: int = 0
-    all_tokens: list[int] = [token_id for token_id, _ in token_probs]
 
-    def append_word(word):
-        if word:
-            words.append(Word(word,
-                              tokenizer.decode(word),
-                              sum(current_log_probs),
-                              all_tokens[:current_word_first_token_index]))
+    @dataclass
+    class Tok:
+        index: int
+        ids: list[int]
+        str: str
+        logprob: float
 
-    for i, (token_id, logprob) in enumerate(token_probs):
-        token: str = tokenizer.convert_ids_to_tokens([token_id])[0]
-        token_str = tokenizer.decode([token_id])
-        print(f"-- {token_id=} {token=} {token_str=} {token_str.isalpha()=} {token_str.isspace()=}")
-        if (not starts_with_space(token) and token_str.isalpha()):
-            current_word.append(token_id)
-            current_log_probs.append(logprob)
-        else:
-            append_word(current_word)
-            current_word = [token_id]
-            current_log_probs = [logprob]
-            current_word_first_token_index = i
-            if is_newline(token):
-                append_word(current_word)
-                current_word = []
-                current_log_probs = []
-                current_word_first_token_index = i
+    def is_beginning_of_word(s: str) -> bool:
+        return (s[0] == " " and s[1:].isalpha()) or s.isalpha()
 
-    append_word(current_word)
+    def is_continuation_of_word(s: str) -> bool:
+        return s.isalpha()
+
+    def merge_tokens(a: Tok, b: Tok) -> Tok | None:
+        if is_beginning_of_word(a.str) and is_continuation_of_word(b.str):
+            return Tok(b.index, a.ids + b.ids, a.str + b.str, a.logprob * b.logprob)
+        return None
+
+    converted = [Tok(i, [token_id], tokenizer.decode([token_id]), logprob)
+                 for i, (token_id, logprob) in enumerate(token_probs)]
+
+    combined = combine(converted, merge_tokens)
+
+    ts = [t[0] for t in token_probs]
+
+    words = [Word(tok.ids, tok.str, tok.logprob, ts[:tok.index]) for tok in combined]
 
     return words
 

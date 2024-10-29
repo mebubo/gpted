@@ -23,5 +23,9 @@ for (int y = 0; y < HEIGHT; y++) {
     words = split_into_words(token_probs, tokenizer)
     print("---", [w.text for w in words])
     expected_words = ["//", " Context", ":", " C", " code", " from", " an", " image", " manipulation", " library", ".\n",
-                      "for", "(", "int", "y", "=", "0", ";", "y", "<", "HEIGHT", ";", "y", "+", "+", ")", "{", "\n", "    ", "for", "(", "int", "x", "=", "0", ";", "x", "<", "WIDTH", ";", "x", "+", "+", ")", "{", "\n", "        ", "buf", "[", "y", "*", "HEIGHT", "+", "x", "]", "=", "0", ";", "\n", "    ", "}", "\n", "}"]
+                      "for", " (", "int", " y", " =", " ", "0", ";", " y", " <", " HEIGHT", ";", " y", "++)", " {\n",
+                      "   ", " for", " (", "int", " x", " =", " ", "0", ";", " x", " <", " WIDTH", ";", " x", "++)", " {\n",
+                      "       ", " buf", "[y", " *", " HEIGHT", " +", " x", "]", " =", " ", "0", ";\n",
+                      "   ", " }\n",
+                      "}"]
     assert [w.text for w in words] == expected_words
