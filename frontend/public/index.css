@@ -129,6 +129,7 @@ span.word-chip {
 
 span.word-chip.flagged {
   background-color: #dd1111;
+  border: 1px solid black;
 }
 
 .result-container {
