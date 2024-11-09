@@ -1,5 +1,6 @@
 #%%
 from dataclasses import dataclass
+import math
 import time
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, PreTrainedModel, PreTrainedTokenizer, PreTrainedTokenizerFast, BatchEncoding
@@ -34,7 +35,7 @@ def split_into_words(token_probs: list[tuple[int, float]], tokenizer: Tokenizer)
 
     def merge_tokens(a: Tok, b: Tok) -> Tok | None:
         if is_beginning_of_word(a.str) and is_continuation_of_word(b.str):
-            return Tok(b.index, a.ids + b.ids, a.str + b.str, a.logprob * b.logprob)
+            return Tok(a.index, a.ids + b.ids, a.str + b.str, a.logprob + b.logprob)
         return None
 
     converted = [Tok(i, [token_id], tokenizer.decode([token_id]), logprob)
@@ -94,6 +95,20 @@ def generate_outputs(model: PreTrainedModel, inputs: BatchEncoding, num_samples:
         )
     return outputs
 
+def find_next_tokens(model: PreTrainedModel, inputs: BatchEncoding, tokenizer: Tokenizer, min_p: float) -> list[list[tuple[int, str, float]]]:
+    input_ids = inputs["input_ids"]
+    attention_mask = inputs["attention_mask"]
+    with torch.no_grad():
+        outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+    logits: torch.Tensor = outputs.logits[:, -1, :]
+    log_probs: torch.Tensor = torch.log_softmax(logits, dim=-1)
+    # for every batch item, find all tokens with log prob greater than min_p, and return their ids and log probs
+    result = []
+    print(f"{log_probs.shape=}")
+    for probs in log_probs:
+        result.append([(i, tokenizer.convert_ids_to_tokens([i])[0], p) for i, p in enumerate(probs) if p > min_p])
+    return result
+
 def extract_replacements(outputs: GenerateOutput | torch.LongTensor, tokenizer: Tokenizer, num_inputs: int, input_len: int, num_samples: int = 5) -> list[list[str]]:
     all_new_words = []
     for i in range(num_inputs):
@@ -117,30 +132,24 @@ def load_model() -> tuple[PreTrainedModel, Tokenizer, torch.device]:
     return model, tokenizer, device
 
 def check_text(input_text: str, model: PreTrainedModel, tokenizer: Tokenizer, device: torch.device) -> list[ApiWord]:
-#%%
     inputs: BatchEncoding = tokenize(input_text, tokenizer, device)
 
-    #%%
     token_probs: list[tuple[int, float]] = calculate_log_probabilities(model, tokenizer, inputs)
 
-    #%%
     words = split_into_words(token_probs, tokenizer)
     log_prob_threshold = -5.0
     low_prob_words = [(i, word) for i, word in enumerate(words) if word.logprob < log_prob_threshold]
 
-    #%%
     contexts = [word.context for _, word in low_prob_words]
     inputs = prepare_inputs(contexts, tokenizer, device)
     input_ids = inputs["input_ids"]
 
-    #%%
     num_samples = 10
     start_time = time.time()
     outputs = generate_outputs(model, inputs, num_samples)
     end_time = time.time()
     print(f"Total time taken for replacements: {end_time - start_time:.4f} seconds")
 
-    #%%
     replacements = extract_replacements(outputs, tokenizer, input_ids.shape[0], input_ids.shape[1], num_samples)
 
     low_prob_words_with_replacements = { i: (w, r) for (i, w), r in zip(low_prob_words, replacements) }
@@ -152,3 +161,31 @@ def check_text(input_text: str, model: PreTrainedModel, tokenizer: Tokenizer, de
         else:
             result.append(ApiWord(text=word.text, logprob=word.logprob, replacements=[]))
     return result
+
+# %%
+model, tokenizer, device = load_model()
+
+#%%
+input_text = "The quick brown fox jumpz over"
+inputs: BatchEncoding = tokenize(input_text, tokenizer, device)
+
+#%%
+token_probs: list[tuple[int, float]] = calculate_log_probabilities(model, tokenizer, inputs)
+
+#%%
+words = split_into_words(token_probs, tokenizer)
+log_prob_threshold = -5.0
+low_prob_words = [(i, word) for i, word in enumerate(words) if word.logprob < log_prob_threshold]
+
+#%%
+contexts = [word.context for _, word in low_prob_words]
+inputs = prepare_inputs(contexts, tokenizer, device)
+input_ids = inputs["input_ids"]
+
+#%%
+next_tokens = find_next_tokens(model, inputs, tokenizer, min_p=-5)
+
+#%%
+next_tokens
+
+# %%
