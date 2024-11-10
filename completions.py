@@ -118,7 +118,7 @@ def find_next_tokens(model: PreTrainedModel, inputs: BatchEncoding, tokenizer: T
     log_probs: torch.Tensor = torch.log_softmax(logits, dim=-1)
     result = []
     for probs in log_probs:
-        result.append([(i, p) for i, p in enumerate(probs)])
+        result.append([(i, p.item()) for i, p in enumerate(probs)])
     return result
 
 def extract_replacements(outputs: GenerateOutput | torch.LongTensor, tokenizer: Tokenizer, num_inputs: int, input_len: int, num_samples: int = 5) -> list[list[str]]:
