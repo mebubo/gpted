@@ -2,10 +2,6 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Protocol
 
-# import torch
-# from transformers import PreTrainedModel
-# from completions import find_next_tokens, Tokenizer
-
 @dataclass
 class Series:
     id: int
@@ -46,7 +42,7 @@ class ExpansionResultBatch:
 def compute_new_series(result: ExpansionOneResult) -> list[Series]:
     results = []
     for expansion in result.expansions:
-        results.append(Series(id=result.series.id, tokens=result.series.tokens + [expansion.token], budget=result.series.budget - expansion.cost))
+        results.append(Series(id=result.series.id, tokens=result.series.tokens + [expansion.token], budget=result.series.budget + expansion.cost))
     return results
 
 def compute_expansions(original_series: list[Series], expanded_series: list[Series]) -> ExpansionResultBatch:
@@ -73,6 +69,7 @@ def expand(batch: Batch, expander: ExpanderOneBatch) -> ExpansionResultBatch:
     completed_series: list[Series] = []
     current_batch = batch
     while len(current_batch.items) > 0:
+        print(f"Expanding {len(current_batch.items)} series: {current_batch.items}")
         current_batch_items = []
         expanded = expander.expand(current_batch)
         for item in expanded.items:

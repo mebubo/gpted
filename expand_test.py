@@ -12,8 +12,8 @@ possible_sequences = [
 def expand_series(series: Series) -> list[ExpansionOne]:
     l = len(series.tokens)
     items = [s[l] for s in possible_sequences if s[:l] == series.tokens and len(s) > l]
-    candidates = [ExpansionOne(token=l, cost=1.0) for l in dict.fromkeys(items)]
-    return [c for c in candidates if c.cost <= series.budget]
+    candidates = [ExpansionOne(token=l, cost=-1.0) for l in dict.fromkeys(items)]
+    return [c for c in candidates if c.cost + series.budget >= 0]
 
 class HardcodedExpanderOneBatch(ExpanderOneBatch):
     def expand(self, batch: Batch) -> ExpansionOneResultBatch:
@@ -38,8 +38,8 @@ def test_expander_budget_one():
     expanded = expander.expand(Batch(items=[s]))
     expected = ExpansionOneResultBatch(
         items=[ExpansionOneResult(series=s, expansions=[
-            ExpansionOne(token=21, cost=1.0),
-            ExpansionOne(token=22, cost=1.0),
+            ExpansionOne(token=21, cost=-1.0),
+            ExpansionOne(token=22, cost=-1.0),
         ])]
     )
     assert expected == expanded
@@ -49,8 +49,8 @@ def test_expander_budget_two():
     expanded = expander.expand(Batch(items=[s]))
     expected = ExpansionOneResultBatch(
         items=[ExpansionOneResult(series=s, expansions=[
-            ExpansionOne(token=21, cost=1.0),
-            ExpansionOne(token=22, cost=1.0),
+            ExpansionOne(token=21, cost=-1.0),
+            ExpansionOne(token=22, cost=-1.0),
         ])]
     )
     assert expected == expanded
@@ -68,8 +68,8 @@ def test_expander_budget_one_two_tokens():
     expanded = expander.expand(Batch(items=[s]))
     expected = ExpansionOneResultBatch(
         items=[ExpansionOneResult(series=s, expansions=[
-            ExpansionOne(token=33, cost=1.0),
-            ExpansionOne(token=34, cost=1.0),
+            ExpansionOne(token=33, cost=-1.0),
+            ExpansionOne(token=34, cost=-1.0),
         ])]
     )
     assert expected == expanded
@@ -81,12 +81,12 @@ def test_expander_budget_one_two_tokens_two_series():
     expected = ExpansionOneResultBatch(
         items=[
             ExpansionOneResult(series=s1, expansions=[
-                ExpansionOne(token=41, cost=1.0),
-                ExpansionOne(token=42, cost=1.0),
+                ExpansionOne(token=41, cost=-1.0),
+                ExpansionOne(token=42, cost=-1.0),
             ]),
             ExpansionOneResult(series=s2, expansions=[
-                ExpansionOne(token=33, cost=1.0),
-                ExpansionOne(token=34, cost=1.0),
+                ExpansionOne(token=33, cost=-1.0),
+                ExpansionOne(token=34, cost=-1.0),
             ])
         ]
     )

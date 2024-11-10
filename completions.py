@@ -95,7 +95,7 @@ def generate_outputs(model: PreTrainedModel, inputs: BatchEncoding, num_samples:
         )
     return outputs
 
-def find_next_tokens(model: PreTrainedModel, inputs: BatchEncoding, tokenizer: Tokenizer, min_p: float) -> list[list[tuple[int, str, float]]]:
+def find_next_tokens_0(model: PreTrainedModel, inputs: BatchEncoding, tokenizer: Tokenizer, min_p: float) -> list[list[tuple[int, str, float]]]:
     input_ids = inputs["input_ids"]
     attention_mask = inputs["attention_mask"]
     with torch.no_grad():
@@ -107,6 +107,18 @@ def find_next_tokens(model: PreTrainedModel, inputs: BatchEncoding, tokenizer: T
     print(f"{log_probs.shape=}")
     for probs in log_probs:
         result.append([(i, tokenizer.convert_ids_to_tokens([i])[0], p) for i, p in enumerate(probs) if p > min_p])
+    return result
+
+def find_next_tokens(model: PreTrainedModel, inputs: BatchEncoding, tokenizer: Tokenizer) -> list[list[tuple[int, float]]]:
+    input_ids = inputs["input_ids"]
+    attention_mask = inputs["attention_mask"]
+    with torch.no_grad():
+        outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+    logits: torch.Tensor = outputs.logits[:, -1, :]
+    log_probs: torch.Tensor = torch.log_softmax(logits, dim=-1)
+    result = []
+    for probs in log_probs:
+        result.append([(i, p) for i, p in enumerate(probs)])
     return result
 
 def extract_replacements(outputs: GenerateOutput | torch.LongTensor, tokenizer: Tokenizer, num_inputs: int, input_len: int, num_samples: int = 5) -> list[list[str]]:
@@ -161,31 +173,3 @@ def check_text(input_text: str, model: PreTrainedModel, tokenizer: Tokenizer, de
         else:
             result.append(ApiWord(text=word.text, logprob=word.logprob, replacements=[]))
     return result
-
-# %%
-model, tokenizer, device = load_model()
-
-#%%
-input_text = "The quick brown fox jumpz over"
-inputs: BatchEncoding = tokenize(input_text, tokenizer, device)
-
-#%%
-token_probs: list[tuple[int, float]] = calculate_log_probabilities(model, tokenizer, inputs)
-
-#%%
-words = split_into_words(token_probs, tokenizer)
-log_prob_threshold = -5.0
-low_prob_words = [(i, word) for i, word in enumerate(words) if word.logprob < log_prob_threshold]
-
-#%%
-contexts = [word.context for _, word in low_prob_words]
-inputs = prepare_inputs(contexts, tokenizer, device)
-input_ids = inputs["input_ids"]
-
-#%%
-next_tokens = find_next_tokens(model, inputs, tokenizer, min_p=-5)
-
-#%%
-next_tokens
-
-# %%
