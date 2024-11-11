@@ -11,10 +11,10 @@ class ExpanderOneBatchLLM:
     tokenizer: Tokenizer
 
     def expand(self, batch: Batch) -> ExpansionOneResultBatch:
-        inputs = prepare_inputs([s.tokens for s in batch.items], self.tokenizer, self.model.device)
+        inputs = prepare_inputs([s.get_all_tokens() for s in batch.items], self.tokenizer, self.model.device)
         next_tokens = find_next_tokens(self.model, inputs, self.tokenizer)
         results = []
         for s, next_tokens in zip(batch.items, next_tokens):
-            expansions = [Expansion(token=token, cost=logprob) for token, logprob in next_tokens if logprob + s.get_remaining_budget() >= 0]
+            expansions = [Expansion(token=token, cost=cost) for token, cost in next_tokens if cost + s.get_remaining_budget() >= 0]
             results.append(ExpansionOneResult(series=s, expansions=expansions))
         return ExpansionOneResultBatch(items=results)
