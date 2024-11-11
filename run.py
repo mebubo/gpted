@@ -29,7 +29,7 @@ expander = ExpanderOneBatchLLM(model, tokenizer)
 #%%
 series = []
 for i, x in enumerate(contexts):
-    series.append(Series(id=i, tokens=x, budget=5.0))
+    series.append(Series(id=i, tokens=x, budget=7.0))
 
 #%%
 batch = Batch(items=series)
@@ -42,7 +42,8 @@ def print_expansions(expansions: ExpansionResultBatch):
     for result in expansions.items:
         for expansion in result.expansions:
             # convert tokens to string
-            s = tokenizer.decode(expansion)
+            tokens = [e.token for e in expansion]
+            s = tokenizer.decode(tokens)
             print(f"{result.series.id}: {expansion} {s}")
 
 print_expansions(expanded)

@@ -1,26 +1,33 @@
 from collections import defaultdict
-from dataclasses import dataclass
-from typing import Protocol
+from dataclasses import dataclass, field
+from typing import Protocol, Self
+
+@dataclass
+class Expansion:
+    token: int
+    cost: float
 
 @dataclass
 class Series:
     id: int
     tokens: list[int]
     budget: float
+    expansions: list[Expansion] = field(default_factory=list)
+
+    def get_all_tokens(self) -> list[int]:
+        return self.tokens + [e.token for e in self.expansions]
+
+    def get_remaining_budget(self) -> float:
+        return self.budget + sum(e.cost for e in self.expansions)
 
 @dataclass
 class Batch:
     items: list[Series]
 
 @dataclass
-class ExpansionOne:
-    token: int
-    cost: float
-
-@dataclass
 class ExpansionOneResult:
     series: Series
-    expansions: list[ExpansionOne]
+    expansions: list[Expansion]
 
 @dataclass
 class ExpansionOneResultBatch:
@@ -33,7 +40,7 @@ class ExpanderOneBatch(Protocol):
 @dataclass
 class ExpansionResult:
     series: Series
-    expansions: list[list[int]]
+    expansions: list[list[Expansion]]
 
 @dataclass
 class ExpansionResultBatch:
@@ -42,7 +49,12 @@ class ExpansionResultBatch:
 def compute_new_series(result: ExpansionOneResult) -> list[Series]:
     results = []
     for expansion in result.expansions:
-        results.append(Series(id=result.series.id, tokens=result.series.tokens + [expansion.token], budget=result.series.budget + expansion.cost))
+        results.append(Series(
+            id=result.series.id,
+            tokens=result.series.tokens,
+            expansions=result.series.expansions + [expansion],
+            budget=result.series.budget
+        ))
     return results
 
 def compute_expansions(original_series: list[Series], expanded_series: list[Series]) -> ExpansionResultBatch:
@@ -51,16 +63,14 @@ def compute_expansions(original_series: list[Series], expanded_series: list[Seri
     # group original series by id
     original_series_by_id = {s.id: s for s in original_series}
     # group expanded series by id
-    expanded_series_by_id: dict[int, list[list[int]]] = defaultdict(list)
+    expanded_series_by_id: dict[int, list[list[Expansion]]] = defaultdict(list)
     for s in expanded_series:
-        expanded_series_by_id[s.id].append(s.tokens)
+        if len(s.expansions) != 0:
+            expanded_series_by_id[s.id].append(s.expansions)
     results = []
     for id, s in original_series_by_id.items():
         expansions = expanded_series_by_id[id]
-        # subtract the original series from each expansion
-        l = len(s.tokens)
-        trimmed_expansions = [e[l:] for e in expansions if len(e) > l]
-        expansion_result = ExpansionResult(series=s, expansions=trimmed_expansions)
+        expansion_result = ExpansionResult(series=s, expansions=expansions)
         results.append(expansion_result)
     return ExpansionResultBatch(items=results)
 

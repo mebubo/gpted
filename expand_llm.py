@@ -15,6 +15,6 @@ class ExpanderOneBatchLLM:
         next_tokens = find_next_tokens(self.model, inputs, self.tokenizer)
         results = []
         for s, next_tokens in zip(batch.items, next_tokens):
-            expansions = [ExpansionOne(token=token, cost=logprob) for token, logprob in next_tokens if logprob + s.budget >= 0]
+            expansions = [Expansion(token=token, cost=logprob) for token, logprob in next_tokens if logprob + s.get_remaining_budget() >= 0]
             results.append(ExpansionOneResult(series=s, expansions=expansions))
         return ExpansionOneResultBatch(items=results)
