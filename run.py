@@ -35,7 +35,10 @@ for i, x in enumerate(contexts):
 batch = Batch(items=series)
 
 #%%
-expanded = expand(batch, expander)
+stopping_criterion = create_stopping_criterion_llm(tokenizer)
+
+#%%
+expanded = expand(batch, expander, stopping_criterion)
 
 # %%
 def print_expansions(expansions: ExpansionResultBatch):

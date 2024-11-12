@@ -1,6 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Protocol, Self
+from typing import Callable, Protocol, Self
 
 @dataclass
 class Expansion:
@@ -46,16 +46,19 @@ class ExpansionResult:
 class ExpansionResultBatch:
     items: list[ExpansionResult]
 
-def compute_new_series(result: ExpansionOneResult) -> list[Series]:
-    results = []
+def compute_new_series(result: ExpansionOneResult, stopping_criterion: Callable[[Series, Expansion], bool]) -> tuple[list[Series], list[Series]]:
+    new_series_batch = []
     for expansion in result.expansions:
-        results.append(Series(
-            id=result.series.id,
-            tokens=result.series.tokens,
-            expansions=result.series.expansions + [expansion],
-            budget=result.series.budget
-        ))
-    return results
+        if not stopping_criterion(result.series, expansion):
+            new_series = Series(
+                id=result.series.id,
+                tokens=result.series.tokens,
+                expansions=result.series.expansions + [expansion],
+                budget=result.series.budget
+            )
+            new_series_batch.append(new_series)
+    completed_series = [result.series] if len(new_series_batch) == 0 else []
+    return new_series_batch, completed_series
 
 def compute_expansions(original_series: list[Series], expanded_series: list[Series]) -> ExpansionResultBatch:
     # check that ids in original_series are unique
@@ -74,8 +77,11 @@ def compute_expansions(original_series: list[Series], expanded_series: list[Seri
         results.append(expansion_result)
     return ExpansionResultBatch(items=results)
 
+def default_completion_criterion(series: Series, expansion: Expansion) -> bool:
+    return series.get_remaining_budget() + expansion.cost < 0
+
 # A compound operation that we can implement generically, relying on an ExpanderOneBatch
-def expand(batch: Batch, expander: ExpanderOneBatch) -> ExpansionResultBatch:
+def expand(batch: Batch, expander: ExpanderOneBatch, completion_criterion: Callable[[Series, Expansion], bool] = default_completion_criterion) -> ExpansionResultBatch:
     completed_series: list[Series] = []
     current_batch = batch
     while len(current_batch.items) > 0:
@@ -86,6 +92,8 @@ def expand(batch: Batch, expander: ExpanderOneBatch) -> ExpansionResultBatch:
             if len(item.expansions) == 0:
                 completed_series.append(item.series)
             else:
-                current_batch_items.extend(compute_new_series(item))
+                new_series, completed = compute_new_series(item, completion_criterion)
+                completed_series.extend(completed)
+                current_batch_items.extend(new_series)
         current_batch = Batch(items=current_batch_items)
     return compute_expansions(batch.items, completed_series)

@@ -14,7 +14,7 @@ def expand_series(series: Series) -> list[Expansion]:
     l = len(all_tokens)
     items = [s[l] for s in possible_sequences if s[:l] == all_tokens and len(s) > l]
     candidates = [Expansion(token=l, cost=-1.0) for l in dict.fromkeys(items)]
-    return [c for c in candidates if c.cost + series.get_remaining_budget() >= 0]
+    return candidates
 
 class HardcodedExpanderOneBatch(ExpanderOneBatch):
     def expand(self, batch: Batch) -> ExpansionOneResultBatch:
@@ -30,7 +30,10 @@ def test_expander_zero_budget():
     s = Series(id=0, tokens=[1], budget=0.0)
     expanded = expander.expand(Batch(items=[s]))
     expected = ExpansionOneResultBatch(
-        items=[ExpansionOneResult(series=s, expansions=[])]
+        items=[ExpansionOneResult(series=s, expansions=[
+            Expansion(token=21, cost=-1.0),
+            Expansion(token=22, cost=-1.0),
+        ])]
     )
     assert expected == expanded
 
