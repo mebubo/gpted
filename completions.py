@@ -1,16 +1,13 @@
 #%%
 from dataclasses import dataclass
-import math
-import time
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, PreTrainedModel, PreTrainedTokenizer, PreTrainedTokenizerFast, BatchEncoding
 from transformers.generation.utils import GenerateOutput
 
-from models import ApiWord, Word
-
-type Tokenizer = PreTrainedTokenizer | PreTrainedTokenizerFast
-
+from models import ApiWord, Word, Replacement
 from combine import combine
+from expand import *
+from expand_llm import *
 
 def starts_with_space(token: str) -> bool:
     return token.startswith(chr(9601)) or token.startswith(chr(288))
@@ -74,10 +71,6 @@ def calculate_log_probabilities(model: PreTrainedModel, tokenizer: Tokenizer, in
     tokens: torch.Tensor = input_ids[0][1:]
     return list(zip(tokens.tolist(), token_log_probs.tolist()))
 
-def prepare_inputs(contexts: list[list[int]], tokenizer: Tokenizer, device: torch.device) -> BatchEncoding:
-    texts = [tokenizer.decode(context, skip_special_tokens=True) for context in contexts]
-    return tokenizer(texts, return_tensors="pt", padding=True).to(device)
-
 def generate_outputs(model: PreTrainedModel, inputs: BatchEncoding, num_samples: int = 5) -> GenerateOutput | torch.LongTensor:
     input_ids = inputs["input_ids"]
     attention_mask = inputs["attention_mask"]
@@ -94,44 +87,6 @@ def generate_outputs(model: PreTrainedModel, inputs: BatchEncoding, num_samples:
             # num_beams=num_samples
         )
     return outputs
-
-def find_next_tokens_0(model: PreTrainedModel, inputs: BatchEncoding, tokenizer: Tokenizer, min_p: float) -> list[list[tuple[int, str, float]]]:
-    input_ids = inputs["input_ids"]
-    attention_mask = inputs["attention_mask"]
-    with torch.no_grad():
-        outputs = model(input_ids=input_ids, attention_mask=attention_mask)
-    logits: torch.Tensor = outputs.logits[:, -1, :]
-    log_probs: torch.Tensor = torch.log_softmax(logits, dim=-1)
-    # for every batch item, find all tokens with log prob greater than min_p, and return their ids and log probs
-    result = []
-    print(f"{log_probs.shape=}")
-    for probs in log_probs:
-        result.append([(i, tokenizer.convert_ids_to_tokens([i])[0], p) for i, p in enumerate(probs) if p > min_p])
-    return result
-
-def find_next_tokens(model: PreTrainedModel, inputs: BatchEncoding, tokenizer: Tokenizer) -> list[list[tuple[int, float]]]:
-    input_ids = inputs["input_ids"]
-    attention_mask = inputs["attention_mask"]
-    with torch.no_grad():
-        outputs = model(input_ids=input_ids, attention_mask=attention_mask)
-    logits: torch.Tensor = outputs.logits[:, -1, :]
-    log_probs: torch.Tensor = torch.log_softmax(logits, dim=-1)
-    result = []
-    for probs in log_probs:
-        result.append([(i, p.item()) for i, p in enumerate(probs)])
-    return result
-
-def extract_replacements(outputs: GenerateOutput | torch.LongTensor, tokenizer: Tokenizer, num_inputs: int, input_len: int, num_samples: int = 5) -> list[list[str]]:
-    all_new_words = []
-    for i in range(num_inputs):
-        replacements = set()
-        for j in range(num_samples):
-            generated_ids = outputs[i * num_samples + j][input_len:]
-            new_word = tokenizer.convert_ids_to_tokens(generated_ids.tolist())[0]
-            if starts_with_space(new_word):
-                replacements.add(" " +new_word[1:])
-        all_new_words.append(sorted(list(replacements)))
-    return all_new_words
 
 #%%
 
@@ -153,16 +108,39 @@ def check_text(input_text: str, model: PreTrainedModel, tokenizer: Tokenizer, de
     low_prob_words = [(i, word) for i, word in enumerate(words) if word.logprob < log_prob_threshold]
 
     contexts = [word.context for _, word in low_prob_words]
-    inputs = prepare_inputs(contexts, tokenizer, device)
-    input_ids = inputs["input_ids"]
 
-    num_samples = 10
-    start_time = time.time()
-    outputs = generate_outputs(model, inputs, num_samples)
-    end_time = time.time()
-    print(f"Total time taken for replacements: {end_time - start_time:.4f} seconds")
 
-    replacements = extract_replacements(outputs, tokenizer, input_ids.shape[0], input_ids.shape[1], num_samples)
+    expander = ExpanderOneBatchLLM(model, tokenizer)
+
+    #%%
+    series = []
+    for i, x in enumerate(contexts):
+        series.append(Series(id=i, tokens=x, budget=5.0))
+
+    #%%
+    batch = Batch(items=series)
+
+    #%%
+    stopping_criterion = create_stopping_criterion_llm(tokenizer)
+
+    #%%
+    expanded = expand(batch, expander, stopping_criterion)
+
+    # group by series id
+    expanded_by_id: dict[int, list[list[Expansion]]] = defaultdict(list)
+    for result in expanded.items:
+        expanded_by_id[result.series.id].extend(result.expansions)
+
+    replacements: list[list[Replacement]] = []
+    for i, _ in enumerate(contexts):
+        r = []
+        expansions = expanded_by_id[i]
+        for exp in expansions:
+            tokens = [e.token for e in exp]
+            s = tokenizer.decode(tokens)
+            logprob = sum(e.cost for e in exp)
+            r.append(Replacement(text=s, logprob=logprob))
+        replacements.append(r)
 
     low_prob_words_with_replacements = { i: (w, r) for (i, w), r in zip(low_prob_words, replacements) }
 

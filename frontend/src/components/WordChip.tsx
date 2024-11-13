@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from "react"
+import { Replacement } from "../interfaces";
 
 interface WordChipProps {
   word: string;
   logprob: number;
   threshold: number;
-  replacements: string[];
+  replacements: Replacement[];
   onReplace: (newWord: string) => Promise<void>;
 }
 
@@ -60,6 +61,11 @@ export function WordChip({
     w3 = "";
   }
 
+  // sort replacements by logprob (make sure not to mutate the original array)
+  const sortedReplacements = [...replacements].sort((a, b) => b.logprob - a.logprob)
+  // convert logprobs to probabilities
+  const withProbabilities = sortedReplacements.map(r => ({ ...r, probability: Math.exp(r.logprob)*100 }))
+
   return (
     <span
       title={logprob.toFixed(2)}
@@ -86,19 +92,20 @@ export function WordChip({
             boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
           }}
         >
-          {replacements.map((option, index) => (
+          {withProbabilities.map((option, index) => (
             <div
               key={index}
-              onClick={() => handleReplacement(option)}
+              onClick={() => handleReplacement(option.text)}
               onMouseEnter={() => setSelectedIndex(index)}
               style={{
                 padding: "5px 10px",
                 cursor: "pointer",
                 color: "black",
-                backgroundColor: selectedIndex === index ? "#f0f0f0" : "white"
+                backgroundColor: selectedIndex === index ? "#f0f0f0" : "white",
+                whiteSpace: "nowrap"
               }}
             >
-              {option}
+              {option.text} <small style={{ fontSize: "0.7em", color: "#666" }}>{option.probability.toFixed(1)}%</small>
             </div>
           ))}
         </div>

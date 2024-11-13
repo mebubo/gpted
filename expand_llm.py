@@ -1,9 +1,25 @@
+import torch
 from expand import *
-from transformers import AutoTokenizer, AutoModelForCausalLM, PreTrainedModel, PreTrainedTokenizer, PreTrainedTokenizerFast, BatchEncoding
+from transformers import PreTrainedModel, PreTrainedTokenizer, PreTrainedTokenizerFast, BatchEncoding
 from dataclasses import dataclass
-from completions import prepare_inputs, find_next_tokens
 
 type Tokenizer = PreTrainedTokenizer | PreTrainedTokenizerFast
+
+def find_next_tokens(model: PreTrainedModel, inputs: BatchEncoding, tokenizer: Tokenizer) -> list[list[tuple[int, float]]]:
+    input_ids = inputs["input_ids"]
+    attention_mask = inputs["attention_mask"]
+    with torch.no_grad():
+        outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+    logits: torch.Tensor = outputs.logits[:, -1, :]
+    log_probs: torch.Tensor = torch.log_softmax(logits, dim=-1)
+    result = []
+    for probs in log_probs:
+        result.append([(i, p.item()) for i, p in enumerate(probs)])
+    return result
+
+def prepare_inputs(contexts: list[list[int]], tokenizer: Tokenizer, device: torch.device) -> BatchEncoding:
+    texts = [tokenizer.decode(context, skip_special_tokens=True) for context in contexts]
+    return tokenizer(texts, return_tensors="pt", padding=True).to(device)
 
 @dataclass
 class ExpanderOneBatchLLM:

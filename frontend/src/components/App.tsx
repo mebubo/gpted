@@ -1,12 +1,7 @@
 import React, { useState } from "react"
 import { WordChip } from "./WordChip"
 import { Spinner } from "./Spinner"
-
-interface Word {
-  text: string
-  logprob: number
-  replacements: string[]
-}
+import { Word } from "../interfaces"
 
 async function checkText(text: string): Promise<Word[]> {
   const encodedText = encodeURIComponent(text);
@@ -21,8 +16,8 @@ export default function App() {
   const [context, setContext] = useState("")
   const [wordlist, setWordlist] = useState("")
   const [showWholePrompt, setShowWholePrompt] = useState(false)
-  const [text, setText] = useState("I just drove to the store to but eggs, but they had some.")
-  // const [text, setText] = useState("1\n2\n3\n4\n5\n")
+  // const [text, setText] = useState("I just drove to the store to but eggs, but they had some.")
+  const [text, setText] = useState("I drove to the stove to but eggs")
   const [mode, setMode] = useState<"edit" | "check">("edit")
   const [words, setWords] = useState<Word[]>([])
   const [isLoading, setIsLoading] = useState(false)

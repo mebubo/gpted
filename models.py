@@ -9,10 +9,14 @@ class Word:
     logprob: float
     context: list[int]
 
+class Replacement(BaseModel):
+    text: str
+    logprob: float
+
 class ApiWord(BaseModel):
     text: str
     logprob: float
-    replacements: list[str]
+    replacements: list[Replacement]
 
 class CheckResponse(BaseModel):
     text: str
