@@ -71,23 +71,6 @@ def calculate_log_probabilities(model: PreTrainedModel, tokenizer: Tokenizer, in
     tokens: torch.Tensor = input_ids[0][1:]
     return list(zip(tokens.tolist(), token_log_probs.tolist()))
 
-def generate_outputs(model: PreTrainedModel, inputs: BatchEncoding, num_samples: int = 5) -> GenerateOutput | torch.LongTensor:
-    input_ids = inputs["input_ids"]
-    attention_mask = inputs["attention_mask"]
-    with torch.no_grad():
-        outputs = model.generate(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            max_new_tokens=4,
-            num_return_sequences=num_samples,
-            temperature=1.0,
-            top_k=50,
-            top_p=0.95,
-            do_sample=True
-            # num_beams=num_samples
-        )
-    return outputs
-
 #%%
 
 def load_model() -> tuple[PreTrainedModel, Tokenizer, torch.device]:
