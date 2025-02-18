@@ -110,7 +110,7 @@ def test_add_if_even():
 
 Applying this function to the problem of combining tokens into words is just a matter of writing the correct `combine_fn`:
 
-```
+```python
 @dataclass
 class Tok:
     index: int
