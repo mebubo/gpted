@@ -1,5 +1,7 @@
 # GPTed blog post part 1
 
+![](img/GPTed.jpeg)
+
 What I want to cover:
 - The original blog post
 - Improvements that I wanted to make:
