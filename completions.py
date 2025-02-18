@@ -66,9 +66,9 @@ def calculate_log_probabilities(model: PreTrainedModel, tokenizer: Tokenizer, in
     # B x T x V
     log_probs: torch.Tensor = torch.log_softmax(logits, dim=-1)
     # T - 1
-    token_log_probs: torch.Tensor = log_probs[0, range(log_probs.shape[1]), input_ids[0][1:]]
-    # T - 1
     tokens: torch.Tensor = input_ids[0][1:]
+    # T - 1
+    token_log_probs: torch.Tensor = log_probs[0, range(log_probs.shape[1]), tokens]
     return list(zip(tokens.tolist(), token_log_probs.tolist()))
 
 #%%
