@@ -1,4 +1,15 @@
-# GPTed blog post part 1
+---
+title: Gpted
+emoji: 🏃
+colorFrom: pink
+colorTo: gray
+sdk: docker
+pinned: false
+---
+
+# GPTed blog post
+
+## Part 1
 
 ![](img/GPTed.jpeg)
 
@@ -184,5 +195,12 @@ def test_expander_zero_budget():
 
 They are based on a non-llm expander based on a hardcoded list of possible expansions, so they are very easy to write, straightforward to interpret, and run very fast.
 
+### Limitations of the decoder-only approach
+
+The main limitation of using decoder-only models like GPT or Llama for this task is the unidirectional attention. It means that we are not using the context on the right of the word. This is especially problematic at the start of the text: the first tokens get very little context, so the the probabilities we get from the model are not very useful. The obvious solution is to use a model with bi-directional attention, such as BERT. This will be covered in the part 2 of the post.
+
 ### Other potential possibilities / ideas
 - Instead of using a local model, investigate using an API of a provider that exposes logprobs e.g. replicate
+
+
+## Part 2
