@@ -6,4 +6,6 @@ COPY . /app
 
 RUN uv sync
 
-CMD [".venv/bin/fastapi", "run", "main.py"]
+ENV TRANSFORMERS_CACHE=/app/.cache/huggingface
+
+CMD [".venv/bin/fastapi", "run", "--port", "7860", "main.py"]

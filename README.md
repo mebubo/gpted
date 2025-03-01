@@ -5,6 +5,7 @@ colorFrom: pink
 colorTo: gray
 sdk: docker
 pinned: false
+app_port: 7860
 ---
 
 # GPTed blog post
