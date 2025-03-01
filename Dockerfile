@@ -2,10 +2,14 @@ FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 WORKDIR /app
 
-COPY . /app
+RUN useradd -m -u 1000 user
+
+COPY --chown=user . /app
+
+USER user
+
+ENV HOME=/home/user
 
 RUN uv sync
-
-ENV TRANSFORMERS_CACHE=/app/.cache/huggingface
 
 CMD [".venv/bin/fastapi", "run", "--port", "7860", "main.py"]
