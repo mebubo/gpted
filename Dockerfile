@@ -22,4 +22,4 @@ ENV HOME=/home/user
 
 RUN uv sync
 
-CMD [".venv/bin/fastapi", "run", "--port", "7860", "main.py"]
+CMD ["uv", "run", "fastapi", "run", "--port", "7860", "main.py"]
