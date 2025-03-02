@@ -1,5 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
+import time
 from typing import Callable, Protocol, Self
 
 @dataclass
@@ -87,7 +88,11 @@ def expand(batch: Batch, expander: BatchExpander, completion_criterion: Callable
     while len(current_batch.items) > 0:
         print(f"Expanding {len(current_batch.items)} series: {current_batch.items}")
         current_batch_items = []
+        start_time = time.time()
         expanded = expander.expand(current_batch)
+        print(f"Expanded, took {time.time() - start_time} seconds")
+        print("Computing new batch")
+        start_time = time.time()
         for item in expanded.items:
             if len(item.expansions) == 0:
                 completed_series.append(item.series)
@@ -96,4 +101,5 @@ def expand(batch: Batch, expander: BatchExpander, completion_criterion: Callable
                 completed_series.extend(completed)
                 current_batch_items.extend(new_series)
         current_batch = Batch(items=current_batch_items)
+        print(f"Computed, took {time.time() - start_time} seconds")
     return compute_expansions(batch.items, completed_series)
