@@ -5,7 +5,7 @@ COPY frontend/ ./
 RUN npm ci
 RUN npm run build
 
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
 
 RUN useradd -m -u 1000 user
 
