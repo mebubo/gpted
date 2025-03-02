@@ -205,3 +205,9 @@ The main limitation of using decoder-only models like GPT or Llama for this task
 
 
 ## Part 2
+
+Difficluties in using encoder-only models (i.e. models with bidirectional attention) for this task. Whereas unidierctional attention in decoder-only models enables them to be trained on the task of next token predition, and used for autoregressive text generation, with an important property of returning logprobs for every input token as a byporduct, encoder-only only models like BERT are trained on masked token prediction (also on next sentence prediction), and it is from this fact that the difficulties arise:
+
+- We cannot get logprobs for all tokens in a given text in 1 batch. Instead, because we need to mask individual tokens, replicating the input as many times as there are tokens
+- For multi-token words, it is not clear if replacing them by a sequence of mask tokens would give results (if model is trained to predict multiple adjacent mask tokens)
+- Generating replacesments poses an additional difficulty: we don't know beforehand how many tokens the replacement word would consist of, so naively we'd need to try all possible sequences <mask>, <mask><mask>, <mask><mask><mask>, and so on until a reasonable limit of the number of tokens in a word.
