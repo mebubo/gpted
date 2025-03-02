@@ -12,43 +12,30 @@ app_port: 7860
 
 ![](img/GPTed.jpeg)
 
-What I want to cover:
-- The original blog post
-- Improvements that I wanted to make:
-	- In addition to highlighting low-probability words, show replacement suggestions that are more likely
-	- Operate at the level of whole words, not tokens
-- Justification for using a local model
-	- Limitations of the logprobs returned by the APIs
-- Main parts of the project
-	- Combining tokens into words to get the probabilities of whole words
-	- The batched multi-token expansion with probability budget
-	- Testable abstract implementation
-
-
 This post describes my attempt to build an improved version of GPTed from https://vgel.me/posts/gpted-launch/ and what I learned from it.
 
 Here is what has been done in the original GPTed:
-- Use logprobs returned by the OpenAI API (in particular, the /v1/completions legacy api https://platform.openai.com/docs/api-reference/completions) for tokens _in the existing text_ (as opposed to generated text) to detect the tokens the model is surprised by
+- Use logprobs returned by the OpenAI API (in particular, the [legacy /v1/completions API](https://platform.openai.com/docs/api-reference/completions)) for tokens _in the existing text_ (as opposed to generated text) to detect the tokens the model is surprised by
 - Provide a basic text editing UI that has a mode in which the tokens with a logprob below a given threshold are highlighted. Not all highlighted tokens are necessarily a mistake, but the idea is that it may be worth checking that a low-probability token is indeed intended.
 
 Here are the improvements that I wanted to make:
-- Operate at the word level, instead of token level, to compute the log prob of whole words even if they are mutli-token, and to highlight whole words
+- Operate at the word level, instead of token level, to compute the logprobs of whole words even if they are mutli-token, and to highlight whole words
 - Propose replacement words for the highlighted words
 	- Specifically, words with probability higher than the flagging threshold
 
 ### On logprobs in OpenAI API
 
-The original GPTed project relied on the 2 features in the legacy OpenAI /v1/completions API:
+The original GPTed project relied on the 2 features in the [legacy OpenAI /v1/completions API](https://platform.openai.com/docs/api-reference/completions):
 
 > logprobs: Include the log probabilities on the `logprobs` most likely output tokens, as well the chosen tokens. For example, if `logprobs` is 5, the API will return a list of the 5 most likely tokens. The API will always return the `logprob` of the sampled token, so there may be up to `logprobs+1` elements in the response. The maximum value for `logprobs` is 5.
 
 > echo: Echo back the prompt in addition to the completion
 
-The echo parameter doesn't exist anymore in the modern chat completions API /v1/chat/completions, making it impossible to get logprobs for an existing text (as opposed to generated text). The legacy completions API is not available for modern models like GPT4 (FIXME verify this claim).
+The echo parameter doesn't exist anymore in the [modern /v1/chat/completions API](https://platform.openai.com/docs/api-reference/chat), making it impossible to get logprobs for an existing text (as opposed to generated text). The legacy completions API is [not available](https://platform.openai.com/docs/models#model-endpoint-compatibility) for modern models like GPT4.
 
-Also, the limit of 5 for the number of logprobs is also quite limiting: there may well be more than 5 tokens above the threshold, and I would like to be able to take all of them into account.
+Also, the maximum of 5 for the number of logprobs is also quite limiting: there may well be more than 5 tokens above the threshold, and I would like to be able to take all of them into account.
 
-Also, the case of multi-token words meant that it would be convenient to use batching, which is not available over the OpenAI API.
+Moreover, the case of multi-token words meant that it would be convenient to use batching, which is not available over the OpenAI API.
 For the above 3 reasons, I decided to switch to using local models.
 
 ### Local models with huggingface transformers
@@ -196,7 +183,9 @@ They are based on a non-llm expander based on a hardcoded list of possible expan
 
 ### Limitations of the decoder-only approach
 
-The main limitation of using decoder-only models like GPT or Llama for this task is the unidirectional attention. It means that we are not using the context on the right of the word. This is especially problematic at the start of the text: the first tokens get very little context, so the the probabilities we get from the model are not very useful. The obvious solution is to use a model with bi-directional attention, such as BERT. This will be covered in the part 2 of the post.
+The main limitation of using decoder-only models like GPT or Llama for this task is the unidirectional attention. It means that we are not using the context to the right of the word. This is especially problematic at the start of the text: the first tokens get very little context, so the the probabilities we get from the model are not very useful. The obvious solution is to use a model with bi-directional attention, such as BERT. This comes with its own set of challenges and will be covered in the part 2 of the post.
 
 ### Other potential possibilities / ideas
 - Instead of using a local model, investigate using an API of a provider that exposes logprobs e.g. replicate
+
+### Deployment on huggingface spaces
