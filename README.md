@@ -220,3 +220,7 @@ Whereas unidierctional attention in decoder-only models enables them to be effic
 Even if we get the logprobs for a sequence of mask tokens, how do we interpret them? What we need in order to generate candidate words (and to compute their probability) are _conditional_ probabilities of the second token given the first one, the third one given the first two, and so on, but logporbs for a sequence of mask tokens don't give us that.
 
 Speculation: either the logprobs of the second [MASK] in a sequence represent probabilities of tokens at that place _given that the previous token is [MASK]_ (and of course given all other actual non-mask and mask tokens at all other positions), or they represent probabilities for tokens in the second position averaged over all possible tokens in position 1, possibly roughly weighted according to the probabilities of the tokens at position 1 (FIXME: is there even a way to know this?)
+
+**The Cauchy-Schwarz Inequality**
+
+$$\left( \sum_{k=1}^n a_k b_k \right)^2 \leq \left( \sum_{k=1}^n a_k^2 \right) \left( \sum_{k=1}^n b_k^2 \right)$$
