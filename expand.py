@@ -25,28 +25,28 @@ class Batch:
     items: list[Series]
 
 @dataclass
-class ExpansionOneResult:
+class TokenCandidates:
     series: Series
     expansions: list[Expansion]
 
 @dataclass
-class ExpansionOneResultBatch:
-    items: list[ExpansionOneResult]
+class BatchCandidates:
+    items: list[TokenCandidates]
 
 # A fundamental operation that we can implement both using an LLM and using a list of hardcoded sequences, for testing
-class ExpanderOneBatch(Protocol):
-    def expand(self, batch: Batch) -> ExpansionOneResultBatch: ...
+class BatchExpander(Protocol):
+    def expand(self, batch: Batch) -> BatchCandidates: ...
 
 @dataclass
-class ExpansionResult:
+class CompletedSequence:
     series: Series
     expansions: list[list[Expansion]]
 
 @dataclass
-class ExpansionResultBatch:
-    items: list[ExpansionResult]
+class CompletedBatch:
+    items: list[CompletedSequence]
 
-def compute_new_series(result: ExpansionOneResult, stopping_criterion: Callable[[Series, Expansion], bool]) -> tuple[list[Series], list[Series]]:
+def compute_new_series(result: TokenCandidates, stopping_criterion: Callable[[Series, Expansion], bool]) -> tuple[list[Series], list[Series]]:
     new_series_batch = []
     for expansion in result.expansions:
         if not stopping_criterion(result.series, expansion):
@@ -60,7 +60,7 @@ def compute_new_series(result: ExpansionOneResult, stopping_criterion: Callable[
     completed_series = [result.series] if len(new_series_batch) == 0 else []
     return new_series_batch, completed_series
 
-def compute_expansions(original_series: list[Series], expanded_series: list[Series]) -> ExpansionResultBatch:
+def compute_expansions(original_series: list[Series], expanded_series: list[Series]) -> CompletedBatch:
     # check that ids in original_series are unique
     assert len(original_series) == len({s.id for s in original_series})
     # group original series by id
@@ -73,15 +73,15 @@ def compute_expansions(original_series: list[Series], expanded_series: list[Seri
     results = []
     for id, s in original_series_by_id.items():
         expansions = expanded_series_by_id[id]
-        expansion_result = ExpansionResult(series=s, expansions=expansions)
+        expansion_result = CompletedSequence(series=s, expansions=expansions)
         results.append(expansion_result)
-    return ExpansionResultBatch(items=results)
+    return CompletedBatch(items=results)
 
 def default_completion_criterion(series: Series, expansion: Expansion) -> bool:
     return series.get_remaining_budget() + expansion.cost < 0
 
-# A compound operation that we can implement generically, relying on an ExpanderOneBatch
-def expand(batch: Batch, expander: ExpanderOneBatch, completion_criterion: Callable[[Series, Expansion], bool] = default_completion_criterion) -> ExpansionResultBatch:
+# A compound operation that we can implement generically, relying on a BatchExpander
+def expand(batch: Batch, expander: BatchExpander, completion_criterion: Callable[[Series, Expansion], bool] = default_completion_criterion) -> CompletedBatch:
     completed_series: list[Series] = []
     current_batch = batch
     while len(current_batch.items) > 0:

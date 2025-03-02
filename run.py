@@ -24,7 +24,7 @@ low_prob_words = [(i, word) for i, word in enumerate(words) if word.logprob < lo
 contexts = [word.context for _, word in low_prob_words]
 
 #%%
-expander = ExpanderOneBatchLLM(model, tokenizer)
+expander = LLMBatchExpander(model, tokenizer)
 
 #%%
 series = []
@@ -41,7 +41,7 @@ stopping_criterion = create_stopping_criterion_llm(tokenizer)
 expanded = expand(batch, expander, stopping_criterion)
 
 # %%
-def print_expansions(expansions: ExpansionResultBatch):
+def print_expansions(expansions: CompletedBatch):
     for result in expansions.items:
         for expansion in result.expansions:
             # convert tokens to string

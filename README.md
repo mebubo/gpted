@@ -173,7 +173,7 @@ In my case, I stop when the budget is exhausted, and I also stop if the expansio
 
 Given the batch and the stopping criterion, we can call the expander:
 ```python
-expander = ExpanderOneBatchLLM(model, tokenizer)
+expander = LLMBatchExpander(model, tokenizer)
 expanded = expand(batch, expander, stopping_criterion)
 ```
 

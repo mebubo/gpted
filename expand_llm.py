@@ -22,18 +22,18 @@ def prepare_inputs(contexts: list[list[int]], tokenizer: Tokenizer, device: torc
     return tokenizer(texts, return_tensors="pt", padding=True).to(device)
 
 @dataclass
-class ExpanderOneBatchLLM:
+class LLMBatchExpander(BatchExpander):
     model: PreTrainedModel
     tokenizer: Tokenizer
 
-    def expand(self, batch: Batch) -> ExpansionOneResultBatch:
+    def expand(self, batch: Batch) -> BatchCandidates:
         inputs = prepare_inputs([s.get_all_tokens() for s in batch.items], self.tokenizer, self.model.device)
         next_tokens = find_next_tokens(self.model, inputs, self.tokenizer)
         results = []
         for s, next_tokens in zip(batch.items, next_tokens):
             expansions = [Expansion(token=token, cost=cost) for token, cost in next_tokens]
-            results.append(ExpansionOneResult(series=s, expansions=expansions))
-        return ExpansionOneResultBatch(items=results)
+            results.append(TokenCandidates(series=s, expansions=expansions))
+        return BatchCandidates(items=results)
 
 def create_stopping_criterion_llm(tokenizer: Tokenizer) -> Callable[[Series, Expansion], bool]:
     def stopping_criterion(series: Series, expansion: Expansion) -> bool:
