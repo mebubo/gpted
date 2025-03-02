@@ -78,8 +78,8 @@ def calculate_log_probabilities(model: PreTrainedModel, tokenizer: Tokenizer, in
 ```
 
 Explanation:
-- we drop the logits for the last token, because it corresponds to the probability of the next token (which we don't have)
-- we compute the softmax over the last dimension (vocab size), to obtain probability distribution over all tokens
+- we drop the logits for the last token, because they correspond to the probability of the next token (we have no use for it because we are not generating text)
+- we compute the softmax over the last dimension (vocab size), to obtain the probability distribution over all tokens
 - we drop the first token because it is a start-of-sequence token
 - `log_probs[0, range(log_probs.shape[1]), tokens]` indexes into log_probs such as to extract
   - at position 0 (probability distribution for the first token after the start-of-sequence token) - the logprob value corresponding to the actual first token
