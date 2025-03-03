@@ -42,7 +42,6 @@ class LLMBatchExpander(BatchExpander):
         results = []
         print(f"Batch size: {len(batch.items)}, next tokens size: {len(next_tokens)}")
         for s, next_tokens in zip(batch.items, next_tokens):
-            print(f"Series {s.id}, {len(next_tokens)=}")
             expansions = [Expansion(token=token, cost=cost) for token, cost in next_tokens]
             results.append(TokenCandidates(series=s, expansions=expansions))
         print()
