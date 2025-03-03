@@ -35,7 +35,7 @@ The echo parameter doesn't exist anymore in the [modern /v1/chat/completions API
 
 Also, the maximum of 5 for the number of logprobs is also quite limiting: there may well be more than 5 tokens above the threshold, and I would like to be able to take all of them into account.
 
-Moreover, the case of multi-token words meant that it would be convenient to use batching, which is not available over the OpenAI API.
+Moreover, the case of multi-token words meant that it would be convenient to use batching, which is not available over the OpenAI API (there is a [batch API](https://platform.openai.com/docs/guides/batch) but it is not for interactive use).
 For the above 3 reasons, I decided to switch to using local models.
 
 ### Local models with huggingface transformers
