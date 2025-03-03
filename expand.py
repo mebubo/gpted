@@ -86,7 +86,8 @@ def expand(batch: Batch, expander: BatchExpander, completion_criterion: Callable
     completed_series: list[Series] = []
     current_batch = batch
     while len(current_batch.items) > 0:
-        print(f"Expanding {len(current_batch.items)} series: {current_batch.items}")
+        # print(f"Expanding {len(current_batch.items)} series: {current_batch.items}")
+        print(f"Expanding {len(current_batch.items)} series")
         current_batch_items = []
         start_time = time.time()
         expanded = expander.expand(current_batch)
