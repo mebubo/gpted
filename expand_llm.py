@@ -6,7 +6,7 @@ import time
 
 type Tokenizer = PreTrainedTokenizer | PreTrainedTokenizerFast
 
-def find_next_tokens(model: PreTrainedModel, inputs: BatchEncoding, tokenizer: Tokenizer) -> list[list[tuple[int, float]]]:
+def find_next_tokens(model: PreTrainedModel, inputs: BatchEncoding, threshold: float) -> list[list[tuple[int, float]]]:
     input_ids = inputs["input_ids"]
     attention_mask = inputs["attention_mask"]
     print("Running inference")
@@ -21,7 +21,6 @@ def find_next_tokens(model: PreTrainedModel, inputs: BatchEncoding, tokenizer: T
     start_time = time.time()
     result = []
     print(f"Resulting tensor: {log_probs.shape}")
-    threshold = -10.0
     for probs in log_probs:
         # Filter out low probability tokens for efficiency
         above_threshold = torch.where(probs > threshold)
@@ -39,10 +38,11 @@ def prepare_inputs(contexts: list[list[int]], tokenizer: Tokenizer, device: torc
 class LLMBatchExpander(BatchExpander):
     model: PreTrainedModel
     tokenizer: Tokenizer
+    threshold: float
 
     def expand(self, batch: Batch) -> BatchCandidates:
         inputs = prepare_inputs([s.get_all_tokens() for s in batch.items], self.tokenizer, self.model.device)
-        next_tokens = find_next_tokens(self.model, inputs, self.tokenizer)
+        next_tokens = find_next_tokens(self.model, inputs, self.threshold)
         start_time = time.time()
         results = []
         print(f"Batch size: {len(batch.items)}, next tokens size: {len(next_tokens)}")

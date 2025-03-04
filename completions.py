@@ -92,7 +92,7 @@ def check_text(input_text: str, model: PreTrainedModel, tokenizer: Tokenizer, de
 
     contexts = [word.context for _, word in low_prob_words]
 
-    expander = LLMBatchExpander(model, tokenizer)
+    expander = LLMBatchExpander(model, tokenizer, threshold=log_prob_threshold)
 
     #%%
     series = []
