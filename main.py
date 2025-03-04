@@ -15,6 +15,7 @@ def cached_check_text(text: str):
 
 @app.get("/check", response_model=CheckResponse)
 def check(text: str):
+    print(f"Checking text: {text}")
     return CheckResponse(text=text, words=cached_check_text(text))
 
 app.mount("/", StaticFiles(directory="frontend/public", html=True))
