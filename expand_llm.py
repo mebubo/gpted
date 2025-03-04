@@ -39,7 +39,7 @@ class LLMBatchExpander(BatchExpander):
     model: PreTrainedModel
     tokenizer: Tokenizer
     threshold: float
-    chunk_size: int = 16  # Default chunk size, can be adjusted as needed
+    chunk_size: int = 64
 
     def expand(self, batch: Batch) -> BatchCandidates:
         start_time = time.time()
