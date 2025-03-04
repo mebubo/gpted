@@ -21,8 +21,13 @@ def find_next_tokens(model: PreTrainedModel, inputs: BatchEncoding, tokenizer: T
     start_time = time.time()
     result = []
     print(f"Resulting tensor: {log_probs.shape}")
+    threshold = -10.0
     for probs in log_probs:
-        result.append([(i, p.item()) for i, p in enumerate(probs)])
+        # Filter out low probability tokens for efficiency
+        above_threshold = torch.where(probs > threshold)
+        filtered_indices = above_threshold[0]
+        filtered_probs = probs[filtered_indices]
+        result.append([(idx.item(), prob.item()) for idx, prob in zip(filtered_indices, filtered_probs)])
     print(f"Result done, took {time.time() - start_time} seconds")
     return result
 
