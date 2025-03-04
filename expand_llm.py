@@ -39,19 +39,33 @@ class LLMBatchExpander(BatchExpander):
     model: PreTrainedModel
     tokenizer: Tokenizer
     threshold: float
+    chunk_size: int = 16  # Default chunk size, can be adjusted as needed
 
     def expand(self, batch: Batch) -> BatchCandidates:
-        inputs = prepare_inputs([s.get_all_tokens() for s in batch.items], self.tokenizer, self.model.device)
-        next_tokens = find_next_tokens(self.model, inputs, self.threshold)
         start_time = time.time()
-        results = []
-        print(f"Batch size: {len(batch.items)}, next tokens size: {len(next_tokens)}")
-        for s, next_tokens in zip(batch.items, next_tokens):
-            expansions = [Expansion(token=token, cost=cost) for token, cost in next_tokens]
-            results.append(TokenCandidates(series=s, expansions=expansions))
-        print()
+        all_results = []
+
+        # Split batch.items into chunks to avoid CUDA out of memory
+        for i in range(0, len(batch.items), self.chunk_size):
+            chunk_items = batch.items[i:i + self.chunk_size]
+            print(f"Processing chunk {i//self.chunk_size + 1}/{(len(batch.items) + self.chunk_size - 1)//self.chunk_size} with {len(chunk_items)} items")
+
+            # Process this chunk
+            inputs = prepare_inputs([s.get_all_tokens() for s in chunk_items], self.tokenizer, self.model.device)
+            chunk_next_tokens = find_next_tokens(self.model, inputs, self.threshold)
+
+            # Create token candidates for this chunk
+            for s, next_tokens in zip(chunk_items, chunk_next_tokens):
+                expansions = [Expansion(token=token, cost=cost) for token, cost in next_tokens]
+                all_results.append(TokenCandidates(series=s, expansions=expansions))
+
+            # Clear CUDA cache to free up memory
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+        print(f"Total batch size: {len(batch.items)}, processed in {(len(batch.items) + self.chunk_size - 1)//self.chunk_size} chunks")
         print(f"Token candidates done, took {time.time() - start_time} seconds")
-        return BatchCandidates(items=results)
+        return BatchCandidates(items=all_results)
 
 def create_stopping_criterion_llm(tokenizer: Tokenizer) -> Callable[[Series, Expansion], bool]:
     def stopping_criterion(series: Series, expansion: Expansion) -> bool:
