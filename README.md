@@ -199,7 +199,7 @@ expander = LLMBatchExpander(model, tokenizer)
 expanded = expand(batch, expander, stopping_criterion)
 ```
 
-TODO: Need a much better explanation of the expansion logic. Among other things, explain why we need to do it iteratively. Probably with diagrams.
+TODO: Need a much better explanation of the expansion logic. Among other things, explain why we need to do it iteratively. Probably with diagrams. Explain why we use batches.
 
 ### Testing the `expand` logic
 
@@ -234,7 +234,8 @@ https://huggingface.co/spaces/mebubo/gpted
 
 ### Performance improvements
 
-Filtering out low-probability tokens to avoid looping over arrays of vocab_size in pure Python
+- Filtering out low-probability tokens to avoid looping over arrays of vocab_size in pure Python
+- Breaking batches into chunks to avoid CUDA OOM
 
 TODO explain
 
@@ -243,9 +244,15 @@ TODO explain
 
 ### Comparison with the original GPTed
 
+### Limitations
+
+- Performance on longer inputs
+
 ### Limitations of the decoder-only approach
 
 The main limitation of using decoder-only models like GPT or Llama for this task is the unidirectional attention. It means that we are not using the context to the right of the word. This is especially problematic at the start of the text: the first tokens get very little context, so the the probabilities we get from the model are not very useful. The obvious solution is to use a model with bi-directional attention, such as BERT. This comes with its own set of challenges and will be covered in the part 2 of the post.
+
+### Using Cursor during the implementation
 
 ### Other potential possibilities / ideas
 - Instead of using a local model, investigate using an API of a provider that exposes logprobs e.g. replicate
